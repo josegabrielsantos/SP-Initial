@@ -2,10 +2,20 @@ import mongoose, { mongo } from "mongoose";
 
 const userSchema = new mongoose.Schema(
     {
-      name: {
+      firstName: {
         type: String,
         required: true,
         trim: true,
+      },
+      lastName: {
+        type: String,
+        required: true,
+        trim: true,
+      },
+      middleName: {
+        type: String,
+        trim: true,
+        required: true,
       },
       email: {
         type: String,
@@ -35,17 +45,17 @@ const userSchema = new mongoose.Schema(
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            default: [],
+            default: [], 
         }
       ],
-      following_organization:[
+      followingOrganization:[
         {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'Organization',
             default: [],
         }
       ],
-      profile_picture: {
+      profilePicture: {
         type: String, // URL to the profile picture
         default: 'https://example.com/default-profile.png', // Optional default picture
       },
