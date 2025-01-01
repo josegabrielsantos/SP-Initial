@@ -55,6 +55,13 @@ const userSchema = new mongoose.Schema(
             default: [],
         }
       ],
+      likedPosts: [
+        {
+          type:mongoose.Schema.Types.ObjectId,
+          ref: "Post",
+          default: [],
+        }
+      ],
       profilePicture: {
         type: String, // URL to the profile picture
         default: 'https://example.com/default-profile.png', // Optional default picture
