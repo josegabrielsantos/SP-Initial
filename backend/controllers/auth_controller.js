@@ -63,6 +63,7 @@ const signup = async (req, res) => {
 
 const login = async (req, res) => {
     try {
+        console.log("LOGGING IN");
         const {email, password} = req.body;
         const user = await User.findOne({email: email});
         console.log(user);
@@ -158,6 +159,7 @@ const organizationSignup = async (req, res) => {
 
 const organizationLogin = async (req, res) => {
     try {
+        console.log("LOGGING IN");
         const { email, password } = req.body;
         const organization = await Organization.findOne({ email: email });
 

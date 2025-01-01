@@ -3,6 +3,7 @@ import {v2 as cloudinary} from 'cloudinary';
 
 import User from "../models/user_model.js";
 import Notification from "../models/notification_model.js";
+import Organization from '../models/organization_model.js';
 
 const getUserProfile = async (req, res) => {
     const {id} = req.params;
@@ -66,13 +67,11 @@ const followUnfollowUser = async (req, res) => {
 const updateUserProfile = async (req, res) => {
     const {firstName, lastName, middleName, email, currentPassword, newPassword} = req.body;
     let profilePicture = req.body.profilePicture; // Extract the correct field
-
-
     const userId = req.user._id;
 
     try {
         let user = await User.findById(userId);
-
+        
         if(!user) return res.status(404).json({message: "User not found." });
 
         if((!newPassword && currentPassword) || (!currentPassword && newPassword)){
@@ -112,8 +111,40 @@ const updateUserProfile = async (req, res) => {
         res.status(500).json({error:error.message});
     }
 }
+
+const followUnfollowOrganization = async (req, res) => {
+    try {
+        const {id} = req.params;
+        const currentUser = await User.findById(req.user._id);
+        const organizationToModify = await Organization.findById(id);
+        
+        if(!organizationToModify || !currentUser) {
+            return res.status(400).json({error: "User not found."});
+        }
+
+        const isFollowing = currentUser.followingOrganization.includes(id);
+
+        if(isFollowing){
+            await Organization.findByIdAndUpdate(id, {$pull: { followers: req.user._id}});
+            await User.findByIdAndUpdate(req.user._id, { $pull: { followingOrganization: id}});
+            return res.status(200).json({message: "UnFollowed Successfully."});
+        }
+        else{
+            await Organization.findByIdAndUpdate(id, {$push: { followers: req.user._id}});
+            await User.findByIdAndUpdate(req.user._id, { $push: { followingOrganization: id}});
+        
+            return res.status(200).json({message: "Followed Successfully."});
+        }
+
+
+    } catch (error) {
+        console.log("Error in followUnfollowOrganization");
+        res.status(500).json({error:error.message});
+    }
+}
 export {
     getUserProfile,
     followUnfollowUser,
-    updateUserProfile
+    updateUserProfile,
+    followUnfollowOrganization
 };
