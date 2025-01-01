@@ -21,12 +21,18 @@ const organizationSchema = new mongoose.Schema(
         type: String, // URL to the organization's website
         default: null,
       },
-      admins: [
-        {
-          type: mongoose.Schema.Types.ObjectId,
-          ref: 'User', // Reference to the User collection
-        },
-      ],
+      email: {
+        type: String,
+        required: true,
+        unique: true,
+        lowercase: true,
+        trim: true,
+      },
+      password: {
+        type: String,
+        required: true,
+        min: 8,
+      },
       followers: [
         {
           type: mongoose.Schema.Types.ObjectId,

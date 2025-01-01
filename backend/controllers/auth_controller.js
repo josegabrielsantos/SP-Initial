@@ -1,4 +1,5 @@
 import User from "../models/user_model.js";
+import Organization from "../models/organization_model.js";
 import bcrypt from 'bcryptjs';
 import { generateTokenandSetCookie } from "../lib/util/generateToken.js";
 
@@ -96,6 +97,97 @@ const login = async (req, res) => {
     }
 }
 
+const organizationSignup = async (req, res) => {
+    try {
+        const { name, description, logo, website, email, password} = req.body;
+
+        // Validate input
+        if (!name || !description || !email || !password) {
+            return res.status(400).json({ error: "All fields are required." });
+        }
+
+        // Validate admin email format
+        const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+        if (!emailRegex.test(email)) {
+            return res.status(400).json({ error: "Invalid admin email format." });
+        }
+
+        const existingEmail = await User.findOne({ email: email }); 
+        if(existingEmail){
+            return res.status(400).json({ error: "Email is already taken."});
+        }
+
+        // Check if organization name already exists
+        const existingOrganization = await Organization.findOne({ name });
+        if (existingOrganization) {
+            return res.status(400).json({ error: "Organization name is already taken." });
+        }
+
+        // Hash admin password
+        const salt = await bcrypt.genSalt(10);
+        const hashedPassword = await bcrypt.hash(password, salt);
+
+        // Create new organization
+        const newOrganization = new Organization({
+            name,
+            description,
+            logo,
+            website,
+            email,
+            password: hashedPassword
+        });
+
+        await newOrganization.save();
+
+        // Generate token for the admin
+        generateTokenandSetCookie(newOrganization._id, res);
+
+        res.status(201).json({
+            _id: newOrganization._id,
+            name: newOrganization.name,
+            description: newOrganization.description,
+            logo: newOrganization.logo,
+            website: newOrganization.website,
+            email: newOrganization.email,
+        });
+    } catch (error) {
+        console.log("Error in signupOrganization controller:", error.message);
+        res.status(500).json({ error: "Internal Server Error." });
+    }
+};
+
+const organizationLogin = async (req, res) => {
+    try {
+        const { email, password } = req.body;
+        const organization = await Organization.findOne({ email: email });
+
+        // Validate input
+        if (!email || !password) {
+            return res.status(400).json({ error: "Email and password are required." });
+        }
+
+        const isPasswordCorrect = await bcrypt.compare(password, organization?.password || "");
+
+        if (!isPasswordCorrect || !organization) {
+            return res.status(400).json({ error: "Invalid email or password." });
+        }
+
+        // Generate token
+        generateTokenandSetCookie(organization._id, res);
+
+        res.status(200).json({
+            _id: organization._id,
+            name: organization.name,
+            email: organization.Organizationemail,
+            website: organization.website,
+            logo: organization.logo,
+        });
+    } catch (error) {
+        console.log("Error in loginOrganization controller:", error.message);
+        res.status(500).json({ error: "Internal Server Error." });
+    }
+};
+
 const logout = async (req, res) => {
     try {
         res.cookie("jwt", "", {maxAge:0});
@@ -120,5 +212,7 @@ export {
     signup,
     login,
     logout,
-    getMe
+    getMe,
+    organizationSignup,
+    organizationLogin
 };
