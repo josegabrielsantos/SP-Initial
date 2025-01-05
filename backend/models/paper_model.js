@@ -51,12 +51,22 @@ const paperSchema = new mongoose.Schema(
     //   type: mongoose.Schema.Types.ObjectId,
     //   ref: 'Organization', // Reference to the Organization model, if applicable
     // },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      required: true,
+      refPath: 'creatorType', // The refPath will help determine if it's a user or organization
+    },
+    creatorType: {
+        type: String,
+        required: true,
+        enum: ['User', 'Organization'], // This ensures that we track if it's a User or Organization
+    }
   },
   {
     timestamps: true,
   }
 );
 
-const Paper = mongoose.model("Paper", paperSchema);
+const Paper = mongoose.model("Papers", paperSchema);
 
 export default Paper;

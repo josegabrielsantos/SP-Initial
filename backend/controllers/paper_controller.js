@@ -18,6 +18,13 @@ const createPaper = async (req, res) => {
             return res.status(400).json({ message: "Authors must be an array." });
         }
 
+        const creatorId = req.user ? req.user.id : req.organization ? req.organization.id : null;
+        const creatorType = req.user ? 'User' : req.organization ? 'Organization' : null;
+
+        if (!creatorId || !creatorType) {
+            return res.status(400).json({ message: "Creator information is required." });
+        }
+
         // Process each author: check userId or string, save accordingly
         const formattedAuthors = await Promise.all(authors.map(async (author) => {
             if (author && author.userId) {
@@ -77,6 +84,8 @@ const createPaper = async (req, res) => {
             publicationDate,
             doi,
             journal,
+            createdBy: creatorId,
+            creatorType
         });
         
         // Save the paper and return the result
@@ -89,16 +98,70 @@ const createPaper = async (req, res) => {
 };
 
 const getPaperById = async (req, res) => {
+    try {
+        const {id} = req.params;
 
+        const paper = await Paper.findById(id);
+
+        if(!paper) return res.status(404).json({error: "Paper not found."});
+    } catch (error) {
+        res.status(500).json({error:"Internal Server Error"});
+        console.log("Error in like post controller.",error); 
+    }
 }
 
 const updatePaper = async (req, res) => {
-    
+    // const {title, abstract, authors, keywords, publicationDate, journal, doi} = req.body;
+    // const {id} = req.params;
+
+    // const paper = await Paper.findById(id)
+
+    // if(!paper) return res.status(404).json({error: "Paper not found."});
+
+    // paper.title = title || paper.title;
+    // paper.abstract = abstract || paper.abstract;
+    // paper. = title || paper.title;
+    // paper.title = title || paper.title;
+
+    // try {
+        
+    // } catch (error) {
+        
+    // }
 }
 
 const deletePaper = async (req, res) => {
-    
-}
+    try {
+        const paperId = req.params.id;
+        
+        // Check if paper exists
+        const paper = await Paper.findById(paperId);
+        if (!paper) {
+            return res.status(404).json({ message: "Paper not found." });
+        }
+
+        // Get the current user or organization (logged-in user/organization)
+        const creatorId = req.user ? req.user.id : req.organization ? req.organization.id : null;
+        const creatorType = req.user ? 'User' : req.organization ? 'Organization' : null;
+
+        if (!creatorId || !creatorType) {
+            return res.status(400).json({ message: "Creator information is required to delete." });
+        }
+
+        // Check if the current user or organization is the creator of the paper
+        if (paper.createdBy.toString() !== creatorId.toString()) {
+            return res.status(403).json({ message: "You do not have permission to delete this paper." });
+        }
+
+        // Delete the paper
+        await Paper.findByIdAndDelete(paperId);
+        res.status(200).json({ message: "Paper deleted successfully." });
+    } catch (error) {
+        console.error("Error in deletePaper", error);
+        res.status(500).json({ error: error.message || "Internal Server Error." });
+    }
+};
+
 
 const searchPapers = async (req, res) => {
     
