@@ -4,10 +4,10 @@ import authRoutes from "./routes/auth_routes.js";
 import userRoutes from "./routes/user_routes.js";
 import postRoutes from "./routes/post_routes.js";
 import organizationRoutes from "./routes/organization_routes.js";
+import paperRoutes from "./routes/paper_routes.js";
 import connectDB from "./database/connectDB.js";
 import cookieParser from "cookie-parser";
 import {v2 as cloudinary} from "cloudinary";
-
 
 dotenv.config();
 
@@ -29,6 +29,9 @@ app.use("/api/auth", authRoutes);
 app.use("/api/user", userRoutes);
 app.use("/api/post", postRoutes);
 app.use("/api/organization", organizationRoutes);
+
+app.use("/api/paper", paperRoutes);
+
 
 app.listen (PORT, () => {
     console.log(`Server is running on port ${PORT}`);
