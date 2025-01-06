@@ -8,6 +8,18 @@ import paperRoutes from "./routes/paper_routes.js";
 import connectDB from "./database/connectDB.js";
 import cookieParser from "cookie-parser";
 import {v2 as cloudinary} from "cloudinary";
+import elasticsearch_client from './elastic/elastic_client.js'
+
+// Test the connection
+(async () => {
+    try {
+        const info = await elasticsearch_client.info();
+        console.log('Elasticsearch is connected:', info);
+    } catch (error) {
+        console.error('Elasticsearch connection failed:', error);
+    }
+})();
+
 
 dotenv.config();
 
