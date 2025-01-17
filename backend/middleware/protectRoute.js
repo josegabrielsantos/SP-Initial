@@ -83,6 +83,7 @@ export const protectRoute = async (req, res, next) => {
         // If not a user, try to find the organization
         entity = await Organization.findById(decoded.userId).select("-password");
         if (entity) {
+            console.log("yahoo");
             req.organization = entity;
             return next();
         }
