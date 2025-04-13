@@ -76,10 +76,23 @@ const userSchema = new mongoose.Schema(
           default: [],
         }
       ],
+      applicationsForPosts: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Post'
+        }
+      ],
+      posts: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Post'
+        }
+      ],
       profilePicture: {
         type: String, // URL to the profile picture
         default: 'https://example.com/default-profile.png', // Optional default picture
       },
+      
     },
     {
       timestamps: true, // Automatically adds createdAt and updatedAt fields

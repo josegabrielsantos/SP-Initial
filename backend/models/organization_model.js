@@ -45,7 +45,19 @@ const organizationSchema = new mongoose.Schema(
           ref: 'User', // Reference to the User collection
         }
       ],
+      applicants: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User', // Reference to the User collection
+        }
+      ],
       posts: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'Post', // Reference to the Post collection
+        },
+      ],
+      pendingPosts: [
         {
           type: mongoose.Schema.Types.ObjectId,
           ref: 'Post', // Reference to the Post collection

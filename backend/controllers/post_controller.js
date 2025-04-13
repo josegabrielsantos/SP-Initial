@@ -9,10 +9,9 @@ const createPost = async (req, res) => {
     try {
         const { title, text } = req.body;
         let { image } = req.body;
-        const organizationId = req.organization._id.toString();
-        
-        const organization = await Organization.findById(organizationId);
-        if(!organization) return res.status(404).json({message: "Organization not found."});
+        // const organizationId = req.organization._id.toString();
+        const organizationId = req.organization ? req.organization._id : null;
+        const userId = req.user ? req.user._id : null;
 
         if(!title && !image && !text) return res.status(400).json({error: "Post must have text or image."});
         
@@ -20,16 +19,39 @@ const createPost = async (req, res) => {
             const uploadedResponse = await cloudinary.uploader.upload(image);
             image = uploadedResponse.secure_url;
         }
+        if(userId){
+            const newPost = new Post({
+                author: organizationId,
+                title: title,
+                text: text,
+                image: image,
+                status: 'pending'
+            });
+            await post.save();
 
-        const newPost = new Post({
-            author: organizationId,
-            title: title,
-            text: text,
-            image: image
-        });
-
+            const organization = await Organization.findById(organizationId);
+            if (!organization) return res.status(404).json({ error: 'Organization not found' });
+            await Organization.findByIdAndUpdate(req.organization._id, {$push: {pendingPosts: post._id}})
+            await organization.save();
+            res.status(201).json({ message: 'Post created successfully, awaiting approval' });
+        }
+        else if(organizationId){
+            const post = new Post({
+                title,
+                text,
+                author: organizationId,
+                status: 'approved'
+              });
+            await post.save();
+        
+            const organization = await Organization.findById(organizationId);
+            if (!organization) return res.status(404).json({ error: 'Organization not found' });
+            await Organization.findByIdAndUpdate(req.organization._id, {$push: {posts: post._id}})
+            await organization.save();
+            res.status(201).json({ message: 'Post created successfully' });
+        };
         await newPost.save();
-        await Organization.findByIdAndUpdate(req.organization._id, {$push: {posts: newPost._id}})
+        
         res.status(201).json(newPost);
     } catch (error) {
         res.status(500).json({error:"Internal Server Error"});
