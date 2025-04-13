@@ -3,9 +3,10 @@ import Paper from '../models/paper_model.js'
 import { Client } from '@elastic/elasticsearch';
 
 const esClient = new Client({
-    node:'https://73fb2b570d554e96a4d4364d854134e2.us-central1.gcp.cloud.es.io:443', // Replace with your Elasticsearch URL
+    node: 'https://localhost:9200', // Replace with your Elasticsearch URL
     auth: {
-        apiKey: 'OUxoNWNKUUIxOHU4aU1Oa0dSVnc6Y2h3SkJzWjVSVzJBTk1sU0ZFQU5Ldw=='
+        username: 'elastic',
+        password: 'thWfaVtgu8__6Nv80-VQ'
     },
     tls: {
         rejectUnauthorized: false, // This disables certificate verification
@@ -81,39 +82,73 @@ export const syncExistingData = async () => {
       console.error('Error syncing data:', error);
     }
   };
+
 export const watchMongoChanges = async () => {
-    const pipeline = [
-        { $match: { 'operationType': { $in: ['insert', 'update', 'replace', 'delete'] } } },
-    ];
+  try {
+      // Connect to MongoDB if not already connected
+      if (mongoose.connection.readyState === 0) {
+          await mongoose.connect(process.env.MONGO_URI, {
+              useNewUrlParser: true,
+              useUnifiedTopology: true,
+          });
+      }
 
-    // Start watching the collection using change streams
-    const changeStream = Paper.watch(pipeline);
+      console.log('MongoDB connection established. Watching changes...');
 
-    changeStream.on('change', async (change) => {
-        const { operationType, documentKey, fullDocument } = change;
+      // Watch the Paper collection for changes
+      const changeStream = Paper.watch();
 
-        switch (operationType) {
-            case 'insert':
-            case 'update':
-            case 'replace':
-                // Sync inserted or updated documents to Elasticsearch
-                await syncExistingData(fullDocument);
-                break;
-            case 'delete':
-                // Remove deleted documents from Elasticsearch
-                await esClient.delete({
-                    index: 'papers',
-                    id: documentKey._id.toString(),
-                });
-                console.log('Document deleted from Elasticsearch:', documentKey._id);
-                break;
-            default:
-                console.log('Unsupported operation:', operationType);
-                break;
-        }
-    });
+      changeStream.on('change', async (change) => {
+          console.log('Change detected:', change);
 
-    console.log('Watching MongoDB for changes...');
+          const { operationType, documentKey, fullDocument, updateDescription } = change;
+          console.log(operationType);
+          switch (operationType) {
+              case 'insert': {
+                  // Add the new document to Elasticsearch
+                  const { _id, ...document } = fullDocument;
+                  await esClient.index({
+                      index: 'papers',
+                      id: _id.toString(),
+                      document,
+                  });
+                  console.log(`Document inserted into Elasticsearch: ${_id}`);
+                  break;
+              }
+
+              case 'update': {
+                  // Update the document in Elasticsearch
+                  const { updatedFields } = updateDescription;
+                  await esClient.update({
+                      index: 'papers',
+                      id: documentKey._id.toString(),
+                      doc: updatedFields,
+                  });
+                  console.log(`Document updated in Elasticsearch: ${documentKey._id}`);
+                  break;
+              }
+
+              case 'delete': {
+                  // Remove the document from Elasticsearch
+                  await esClient.delete({
+                      index: 'papers',
+                      id: documentKey._id.toString(),
+                  });
+                  console.log(`Document deleted from Elasticsearch: ${documentKey._id}`);
+                  break;
+              }
+
+              default:
+                  console.log(`Unhandled operation type: ${operationType}`);
+          }
+      });
+
+      changeStream.on('error', (error) => {
+          console.error('Error in ChangeStream:', error);
+      });
+    } catch (error) {
+        console.error('Error setting up watchMongoChanges:', error);
+    }
 };
 
 

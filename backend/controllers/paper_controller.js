@@ -3,8 +3,7 @@ import Paper from "../models/paper_model.js";
 import Author from "../models/author_model.js";
 import Organization from "../models/organization_model.js";
 import User from "../models/user_model.js";
-import esClient from "../elastic/elastic_client.js";
-import {syncExistingData} from "../elastic/elastic_client.js";
+import esClient, { syncExistingData, watchMongoChanges } from "../elastic/elastic_client.js";
 
 const createPaper = async (req, res) => {
     try {
@@ -20,12 +19,12 @@ const createPaper = async (req, res) => {
         //     return res.status(400).json({ message: "Authors must be an array." });
         // }
 
-        // const creatorId = req.user ? req.user.id : req.organization ? req.organization.id : null;
-        // const creatorType = req.user ? 'User' : req.organization ? 'Organization' : null;
+        const creatorId = req.user ? req.user.id : req.organization ? req.organization.id : null;
+        const creatorType = req.user ? 'User' : req.organization ? 'Organization' : null;
 
-        // if (!creatorId || !creatorType) {
-        //     return res.status(400).json({ message: "Creator information is required." });
-        // }
+        if (!creatorId || !creatorType) {
+            return res.status(400).json({ message: "Creator information is required." });
+        }
 
         // Process each author: check userId or string, save accordingly
         // const formattedAuthors = await Promise.all(authors.map(async (author) => {
@@ -86,31 +85,14 @@ const createPaper = async (req, res) => {
             publicationDate,
             doi,
             journal,
-            // createdBy,
-            // creatorType
+            createdBy: creatorId,
+            creatorType
         });
         
         // Save the paper and return the result
         const savedPaper = await newPaper.save();
-
-        // await esClient.index({
-        //     index: "papers",
-        //     id: savedPaper._id.toString(), // Set the Elasticsearch document ID
-        //     document: {
-        //         title: savedPaper.title,
-        //         abstract: savedPaper.abstract,
-        //         authors: savedPaper.authors,
-        //         publicationDate: savedPaper.publicationDate,
-        //         doi: savedPaper.doi,
-        //         journal: savedPaper.journal,
-        //         createdBy: savedPaper.createdBy,
-        //         creatorType: savedPaper.creatorType,
-        //         createdAt: savedPaper.createdAt,
-        //         updatedAt: savedPaper.updatedAt,
-        //     },
-        // });
+        watchMongoChanges();
         res.status(201).json(savedPaper);
-        syncExistingData();
     } catch (error) {
         console.error("Error in createPaper", error);
         res.status(500).json({ error: error.message || "Internal Server Error." });
@@ -153,16 +135,6 @@ const updatePaper = async (req, res) => {
     // }
 }
 
-const test = async (req, res) => {
-    console.log("test controller");
-    try {
-        res.status(201).json({message: "cool works"});
-    } catch (error) {
-        res.status(500).json({error:"Internal Server Error"});
-        console.log("Error in like post controller.",error); 
-    }
-}
-
 const deletePaper = async (req, res) => {
     try {
         const paperId = req.params.id;
@@ -194,7 +166,6 @@ const deletePaper = async (req, res) => {
         res.status(500).json({ error: error.message || "Internal Server Error." });
     }
 };
-
 
 const searchPapers = async (req, res) => {
     try {
@@ -230,28 +201,107 @@ const searchPapers = async (req, res) => {
         res.status(500).json({ error: 'Internal Server Error' });
     }
 };
-
-
-// const searchPapers = async (req, res) => {
-//     const {query} = req.body;
-//     try {
-//         res.send(200).json({message: query});
-//     } catch (error) {
-//         console.error('Error in searchPapers:', error);
-//         res.status(500).json({ error: 'Internal Server Error' });
-//     }
-// }
   
 const getPaperByAuthor = async (req, res) => {
-    
+    try {
+        const { query, filters, author } = req.body;
+
+        if (!query || typeof query !== 'string' || query.trim() === '') {
+            return res.status(400).json({ error: 'Query is required and must be a non-empty string.' });
+        }
+
+        const searchQuery = {
+            index: 'papers',
+            query: {
+                bool: {
+                    must: [
+                        {
+                            match: {
+                                query,
+                                [author]: ['title', 'abstract', 'keywords', 'authors.name'],
+                                fuzziness: 'AUTO',
+                            },
+                        },
+                    ],
+                    filter: filters || [],
+                },
+            },
+        };
+
+        const response = await esClient.search(searchQuery);
+        console.log(response)
+        res.status(200).json({message: response.hits.hits });
+    } catch (error) {
+        console.error('Error in searchPapers:', error.message);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
 }
 
-const getPaperByCategory = async (req, res) => {
-    
-}
+const getPaperByKeyword = async (req, res) => {
+    try {
+        const { keyword } = req.params;
+        const { query } = req.body;
+
+        if (!query || typeof query !== 'string' || query.trim() === '') {
+            return res.status(400).json({ error: 'Query is required and must be a non-empty string.' });
+        }
+
+        const searchQuery = {
+            index: 'papers',
+            query: {
+                bool: {
+                    must: [
+                        {
+                            multi_match: {
+                                query,
+                                fields: ['title', 'abstract', 'keywords', 'authors.name'],
+                                fuzziness: 'AUTO',
+                            },
+                        },
+                    ],
+                    filter: [
+                        { term: { 'authors.name.keyword': author } }, // Exact match for the author's name
+                    ],
+                },
+            },
+        };
+
+        const { body } = await esClient.search(searchQuery);
+
+        if (!body.hits.hits.length) {
+            return res.status(404).json({ message: 'No papers found for the specified author and query.' });
+        }
+
+        const results = body.hits.hits.map((hit) => ({
+            id: hit._id,
+            ...hit._source,
+        }));
+
+        res.status(200).json({ results, total: body.hits.total.value });
+    } catch (error) {
+        console.error('Error in searchPapersByAuthor:', error.message);
+        res.status(500).json({ error: 'Internal Server Error' });
+    }
+};
+
 
 const getAllPapers = async (req, res) => {
-    
+    try {
+        const papers = await Paper.find().sort({createdAt: -1}).populate({
+            path: "title",
+            select: "-password"
+        });
+
+        if(papers.length === 0){
+            return res.status(200).json([]);
+        }
+
+        res.status(200).json(papers);
+
+    } catch (error) {
+        res.status(500).json({error:"Internal Server Error"});
+        console.log("Error in get all post controller.",error);
+    }  
 }
 
 export {
@@ -262,5 +312,5 @@ export {
     searchPapers,
     getAllPapers,
     getPaperByAuthor,
-    getPaperByCategory, test
+    getPaperByKeyword
 };

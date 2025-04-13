@@ -8,7 +8,7 @@ import paperRoutes from "./routes/paper_routes.js";
 import connectDB from "./database/connectDB.js";
 import cookieParser from "cookie-parser";
 import {v2 as cloudinary} from "cloudinary";
-import { syncExistingData, watchMongoChanges} from './elastic/elastic_client.js'
+import { syncExistingData } from './elastic/elastic_client.js'
 
 dotenv.config();
 
@@ -37,6 +37,4 @@ app.listen (PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     connectDB();
     syncExistingData();
-    // copyMongoToElasticsearch();
-    // watchMongoChanges();
 })

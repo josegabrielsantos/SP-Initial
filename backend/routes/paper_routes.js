@@ -6,9 +6,8 @@ import {
     deletePaper, 
     searchPapers, 
     getPaperByAuthor, 
-    getPaperByCategory, 
     getAllPapers,
-    test
+    getPaperByKeyword
 } from '../controllers/paper_controller.js';
 import { protectRoute } from '../middleware/protectRoute.js';
 
@@ -20,7 +19,7 @@ router.delete('/:id', protectRoute, deletePaper);
 
 router.get('/search', protectRoute, searchPapers);
 router.get('/search-author', protectRoute, getPaperByAuthor);
-router.get('/search-keyword', protectRoute, getPaperByCategory);
+router.get('/search-keyword', protectRoute, getPaperByKeyword);
 router.get('/', protectRoute, getAllPapers);
 router.get('/:id', protectRoute, getPaperById);
 
