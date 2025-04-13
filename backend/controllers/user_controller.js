@@ -142,9 +142,40 @@ const followUnfollowOrganization = async (req, res) => {
         res.status(500).json({error:error.message});
     }
 }
+
+const applyMembership = async (req, res) => {
+    try {
+        const {id} = req.params;
+        const currentUser = await User.findById(req.user._id);
+        const organizationToModify = await Organization.findById(id);
+
+        if(!organizationToModify || !currentUser) {
+            return res.status(400).json({error: "User not found."});
+        }
+
+        const isMember = currentUser.memberOrganizations.includes(id);
+
+        if(isMember){
+            await Organization.findByIdAndUpdate(id, {$pull: { applicants: req.user._id}});
+            await User.findByIdAndUpdate(req.user._id, { $pull: { applicationForMembership: id}});
+            return res.status(200).json({message: "Applied Member Successfully."});
+        }
+        else{
+            await Organization.findByIdAndUpdate(id, {$push: { applicants: req.user._id}});
+            await User.findByIdAndUpdate(req.user._id, { $push: { applicationForMembership: id}});
+        
+            return res.status(200).json({message: "Removed Application Successfully."});
+        }
+    } catch (error) {
+        console.log("Error in applyMembership");
+        res.status(500).json({error:error.message});
+    }
+}
+
 export {
     getUserProfile,
     followUnfollowUser,
     updateUserProfile,
-    followUnfollowOrganization
+    followUnfollowOrganization,
+    applyMembership
 };

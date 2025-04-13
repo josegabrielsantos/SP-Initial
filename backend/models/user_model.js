@@ -62,6 +62,20 @@ const userSchema = new mongoose.Schema(
           default: [],
         }
       ],
+      memberOrganizations: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Organization",
+          default: [],
+        }
+      ],
+      applicationForMembership: [
+        {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Organization",
+          default: [],
+        }
+      ],
       profilePicture: {
         type: String, // URL to the profile picture
         default: 'https://example.com/default-profile.png', // Optional default picture
