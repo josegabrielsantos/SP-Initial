@@ -10,7 +10,8 @@ const createPost = async (req, res) => {
         const { title, text } = req.body;
         let { image } = req.body;
         // const organizationId = req.organization._id.toString();
-        const organizationId = req.organization ? req.organization._id : null;
+        let organizationId = req.organization ? req.organization._id : null;
+        if (!organizationId) organizationId = organization.toString();
         const userId = req.user ? req.user._id : null;
 
         if(!title && !image && !text) return res.status(400).json({error: "Post must have text or image."});

@@ -2,6 +2,7 @@ import User from "../models/user_model.js";
 import Organization from "../models/organization_model.js";
 import bcrypt from 'bcryptjs';
 import { generateTokenandSetCookie } from "../lib/util/generateToken.js";
+import { getLikedPosts } from "./post_controller.js";
 
 const signup = async (req, res) => {
     try{
@@ -50,6 +51,11 @@ const signup = async (req, res) => {
                 followers: newUser.followers,
                 followingOrganization: newUser.followingOrganization,
                 profilePicture: newUser.profilePicture,
+                likedPost: newUser.likedPost,
+                memberOrganization: newUser.memberOrganization,
+                applicationForMembership: newUser.applicationForMembership,
+                applicationForPosts: newUser.applicationForPosts,
+                posts: newUser.posts,
             });
         }else{
             res.status(400).json({ error: "Invalid user data."});

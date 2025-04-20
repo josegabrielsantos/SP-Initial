@@ -30,7 +30,12 @@ const postSchema = new mongoose.Schema({
             ref: 'User',
             required: true
         }
-    }]
+    }],
+    status: {
+        type: String,
+        enum: ['pending', 'draft', 'published'],
+        default: 'draft'
+    }
 }, {timestamps: true});
 
 const Post = mongoose.model("Post", postSchema);
