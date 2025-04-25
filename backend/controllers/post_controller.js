@@ -198,6 +198,7 @@ const getOrganizationPost = async (req, res) => {
     }
 }
 
+
 export {
     createPost,
     likeUnlikePost,

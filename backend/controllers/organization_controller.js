@@ -67,7 +67,78 @@ const updateOrganizationProfile = async (req, res) => {
     }
 }
 
+const getFollowerList = async (req, res) => {
+    const {id} = req.params;
+
+    try {
+        const organization = await Organization.findById(id).populate('followers', 'firstName lastName email');
+        
+        if (!organization) {
+            return res.status(404).json({ message: 'Organization not found' });
+        }
+
+        res.status(200).json(organization.followers);
+    } catch (error) {
+        console.error('Error getting organization followers:', error);
+        res.status(500).json({ message: 'Error fetching organization followers' });
+    }
+}
+
+const getMemberList = async (req, res) => {
+    const { id } = req.params;
+
+    try {
+        const organization = await Organization.findById(id).populate('members', 'firstName lastName email');
+
+        if (!organization) {
+        return res.status(404).json({ message: 'Organization not found' });
+        }
+
+        res.status(200).json(organization.members);
+    } catch (error) {
+        console.error('Error getting organization members:', error);
+        res.status(500).json({ message: 'Error fetching organization members' });
+    }
+}
+
+const getApplicantList = async (req, res) => {
+    const organizationId = req.organization._id;
+  
+    try {
+      const organization = await Organization.findById(organizationId).populate('applicants', 'firstName lastName email');
+  
+      if (!organization) {
+        return res.status(404).json({ message: 'Organization not found' });
+      }
+  
+      res.status(200).json(organization.applicants);
+    } catch (error) {
+      console.error('Error getting organization applicants:', error);
+      res.status(500).json({ message: 'Error fetching organization applicants' });
+    }
+}
+const getPostList = async (req, res) => {
+    const organizationId = req.params.id;
+  
+    try {
+      const organization = await Organization.findById(organizationId).populate('posts', 'title content');
+  
+      if (!organization) {
+        return res.status(404).json({ message: 'Organization not found' });
+      }
+  
+      res.status(200).json(organization.posts);
+    } catch (error) {
+      console.error('Error getting organization posts:', error);
+      res.status(500).json({ message: 'Error fetching organization posts' });
+    }
+}
+
 export {
     getOrganizationProfile,
-    updateOrganizationProfile
+    updateOrganizationProfile,
+    getFollowerList,
+    getMemberList,
+    getApplicantList,
+    getPostList,
 }

@@ -91,8 +91,7 @@ const userSchema = new mongoose.Schema(
       profilePicture: {
         type: String, // URL to the profile picture
         default: 'https://example.com/default-profile.png', // Optional default picture
-      },
-      
+      },   
     },
     {
       timestamps: true, // Automatically adds createdAt and updatedAt fields
