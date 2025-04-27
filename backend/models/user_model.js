@@ -34,20 +34,6 @@ const userSchema = new mongoose.Schema(
         enum: ['admin', 'researcher', 'student', 'public'],
         default: 'public',
       },
-      following:[
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
-            default: [],
-        }
-      ],
-      followers:[
-        {
-            type: mongoose.Schema.Types.ObjectId,
-            ref: 'User',
-            default: [], 
-        }
-      ],
       followingOrganization:[
         {
             type: mongoose.Schema.Types.ObjectId,

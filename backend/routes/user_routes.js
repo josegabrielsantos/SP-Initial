@@ -5,7 +5,7 @@ import { getUserProfile, followUnfollowUser, updateUserProfile, followUnfollowOr
 const router = express.Router();
 
 router.get("/profile/:id", protectRoute, getUserProfile);
-router.post("/follow/:id", protectRoute, followUnfollowUser);
+// router.post("/follow/:id", protectRoute, followUnfollowUser);
 router.post("/update", protectRoute, updateUserProfile);
 router.post("/follow-organization/:id", protectRoute, followUnfollowOrganization);
 router.post("/apply-membership/:id", protectRoute, applyMembership);

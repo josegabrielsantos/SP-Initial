@@ -158,13 +158,13 @@ const applyMembership = async (req, res) => {
         if(isMember){
             await Organization.findByIdAndUpdate(id, {$pull: { applicants: req.user._id}});
             await User.findByIdAndUpdate(req.user._id, { $pull: { applicationForMembership: id}});
-            return res.status(200).json({message: "Applied Member Successfully."});
+            return res.status(200).json({message: "Removed Application Successfully."});
         }
         else{
             await Organization.findByIdAndUpdate(id, {$push: { applicants: req.user._id}});
             await User.findByIdAndUpdate(req.user._id, { $push: { applicationForMembership: id}});
         
-            return res.status(200).json({message: "Removed Application Successfully."});
+            return res.status(200).json({message: "Applied Member Successfully."});
         }
     } catch (error) {
         console.log("Error in applyMembership");
