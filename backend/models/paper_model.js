@@ -23,9 +23,12 @@ const paperSchema = new mongoose.Schema(
     //     },
     //   },
     // ],
-    authors: {
-      type: String,
-    },
+    authors: [
+      {
+        type: String,
+        default: "",
+      },
+    ],
     keywords: [
       {
         type: String,
@@ -46,6 +49,10 @@ const paperSchema = new mongoose.Schema(
       sparse: true,
       default: "",
     },
+    organization: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Organization",
+    },
     // file: {
     //   type: String, // URL to the paper file (e.g., PDF)
     //   default: "",
@@ -54,14 +61,6 @@ const paperSchema = new mongoose.Schema(
     //   type: mongoose.Schema.Types.ObjectId,
     //   ref: 'Organization', // Reference to the Organization model, if applicable
     // },
-    createdBy: {
-      type: mongoose.Schema.Types.ObjectId,
-      refPath: 'creatorType', // The refPath will help determine if it's a user or organization
-    },
-    creatorType: {
-        type: String,
-        enum: ['User', 'Organization'], // This ensures that we track if it's a User or Organization
-    }
   },
   // {
   //   timestamps: true,

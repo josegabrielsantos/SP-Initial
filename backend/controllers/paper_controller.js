@@ -7,86 +7,32 @@ import esClient, { syncExistingData, watchMongoChanges } from "../elastic/elasti
 
 const createPaper = async (req, res) => {
     try {
-        const { title, abstract, authors, publicationDate, doi, journal } = req.body;
-
+        const { title, abstract, authors, keywords, publicationDate, doi, journal } = req.body;
+        const organization = req.organization;
         // Ensure title is provided
         if (!title || title.trim() === "") {
             return res.status(400).json({ message: "Title is required." });
         }
 
         // Ensure authors is an array
-        // if (!Array.isArray(authors)) {
-        //     return res.status(400).json({ message: "Authors must be an array." });
-        // }
-
-        const creatorId = req.user ? req.user.id : req.organization ? req.organization.id : null;
-        const creatorType = req.user ? 'User' : req.organization ? 'Organization' : null;
-
-        if (!creatorId || !creatorType) {
-            return res.status(400).json({ message: "Creator information is required." });
+        if (!Array.isArray(authors) || authors.length === 0) {
+            return res.status(400).json({ message: "Authors must be an array." });
         }
 
-        // Process each author: check userId or string, save accordingly
-        // const formattedAuthors = await Promise.all(authors.map(async (author) => {
-        //     if (author && author.userId) {
-        //         // If the author has a userId, check if the user exists in the Author collection
-        //         let existingAuthor = await Author.findOne({ userId: author.userId });
-        //         if (!existingAuthor) {
-        //             // If the user doesn't exist in Author, check in the User collection
-        //             const user = await User.findById(author.userId);
-        //             if (!user) {
-        //                 throw new Error(`User with ID ${author.userId} does not exist.`);
-        //             }
+        if (!Array.isArray(keywords) || keywords.length === 0) {
+            res.status(400);
+            throw new Error('Keywords must be a non-empty array');
+        }
 
-        //             // Create a new author in Author collection
-        //             existingAuthor = new Author({
-        //                 userId: author.userId,
-        //                 firstName: user.firstName,
-        //                 middleName: user.middleName,
-        //                 lastName: user.lastName,
-        //             });
-        //             await existingAuthor.save();
-        //         }
-
-        //         // Return author with the full name from Author schema
-        //         return { userId: existingAuthor.userId, fullName: existingAuthor.fullName };
-        //     } else if (typeof author === "string") {
-        //         // If the author is a string (external author), split it into parts
-        //         const nameParts = author.split(' ');
-        //         const firstName = nameParts[0];
-        //         const middleName = nameParts.length > 2 ? nameParts[1] : null;
-        //         const lastName = nameParts.length > 1 ? nameParts[nameParts.length - 1] : null;
-
-        //         // Save the parsed name as a new author
-        //         let newAuthor = new Author({
-        //             firstName,
-        //             middleName,
-        //             lastName,
-        //             userId: null, // Since it's an external author
-        //         });
-
-        //         // Save the new author and return their full name
-        //         await newAuthor.save();
-        //         return { userId: null, fullName: `${firstName} ${middleName ? middleName + ' ' : ''}${lastName}`.trim() };
-        //     } else {
-        //         // If neither a userId nor a name is provided, throw an error
-        //         throw new Error("Each author must have a userId or a name.");
-        //     }
-        // }));
-
-        // Log authors data before saving to see the structure
-        // console.log("Formatted Authors:", formattedAuthors);
-
-        // Create a new Paper instance
         const newPaper = new Paper({
             title,
             abstract,
             authors,
+            keywords,
             publicationDate,
             doi,
             journal,
-            createdBy: creatorId,
-            creatorType
+            organization,
         });
         
         // Save the paper and return the result

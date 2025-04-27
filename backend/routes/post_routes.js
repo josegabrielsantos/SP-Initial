@@ -10,7 +10,6 @@ const router = express.Router();
     // allow to get all liked posts of an org
     // make comment possible
 
-
 router.get("/all", protectRoute, getAllPosts);
 router.get("/all-liked/:id", protectRoute, getLikedPosts);  // get all liked posts of a user U
 router.get("/following-post", protectRoute, getFollowingPosts); // get all posts of user's following U
@@ -20,6 +19,5 @@ router.post("/create", protectRoute, createPost); // create a post O
 router.post("/like/:id", protectRoute, likeUnlikePost); // like or unlike a post U
 // router.post("/comment/:id", protectRouteOrganizaton, commentPost);
 router.delete("/:id", protectRoute, deletePost); // delete a post O
-
 
 export default router;
