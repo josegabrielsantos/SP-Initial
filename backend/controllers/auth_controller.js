@@ -47,8 +47,6 @@ const signup = async (req, res) => {
                 middleName: newUser.middleName,
                 email: newUser.email,
                 role: newUser.role,
-                following: newUser.following,
-                followers: newUser.followers,
                 followingOrganization: newUser.followingOrganization,
                 profilePicture: newUser.profilePicture,
                 likedPost: newUser.likedPost,
@@ -106,7 +104,7 @@ const login = async (req, res) => {
 
 const organizationSignup = async (req, res) => {
     try {
-        const { name, description, logo, website, email, password} = req.body;
+        const { name, description, website, email, password} = req.body;
 
         // Validate input
         if (!name || !description || !email || !password) {
@@ -141,7 +139,12 @@ const organizationSignup = async (req, res) => {
             logo,
             website,
             email,
-            password: hashedPassword
+            password: hashedPassword,
+            followers,
+            members,
+            applicants,
+            posts,
+            pendingPosts
         });
 
         await newOrganization.save();
@@ -156,6 +159,11 @@ const organizationSignup = async (req, res) => {
             logo: newOrganization.logo,
             website: newOrganization.website,
             email: newOrganization.email,
+            followers: newOrganization.followers,
+            members: newOrganization.members,
+            applicants: newOrganization.applicants,
+            posts: newOrganization.posts,
+            pendingPosts: newOrganization.pendingPosts
         });
     } catch (error) {
         console.log("Error in signupOrganization controller:", error.message);
