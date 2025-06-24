@@ -31,7 +31,7 @@ const userSchema = new mongoose.Schema(
      },
      role: {
        type: String,
-       enum: ['system_admin', 'organization_admin', 'registered_user'],
+       enum: ['superAdmin', 'organization_admin', 'registered_user'],
        default: 'registered_user',
      },
      // Profile fields (FR-1.2) - empty by default, filled after signup
@@ -76,12 +76,12 @@ const userSchema = new mongoose.Schema(
          ref: "Organization",
        }
      ],
-     applicationForMembership: [
-       {
-         type: mongoose.Schema.Types.ObjectId,
-         ref: "Organization",
-       }
-     ],
+    //  applicationForMembership: [
+    //    {
+    //      type: mongoose.Schema.Types.ObjectId,
+    //      ref: "Organization",
+    //    }
+    //  ],
      applicationsForPosts: [
        {
          type: mongoose.Schema.Types.ObjectId,
