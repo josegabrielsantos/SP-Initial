@@ -1,38 +1,41 @@
 import express from 'express';
-import { protectRouteUser } from '../middleware/protectRouteUser.js';
-import { createOrganization
-    , updateOrganization
-    , deleteOrganization
-    , getAllOrganizations
-    , getOrganizationById
-    , getAllOrganizations
-    , getOrganizationProfile
-    , getAllOrganizationsPublic
-    , searchOrganizations
-    , getOrganizationMembers
-    , getOrganizationFollowers
-    , getMyFollowedOrganizations
-    , getMyMemberOrganizations
+import { 
+    addMemberToOrganization, 
+    removeMemberFromOrganization,
+    followUnfollowOrganization, 
+    getOrganizationById, 
+    getOrganizationProfile, 
+    getAllOrganizationsPublic, 
+    searchOrganizations, 
+    getOrganizationMembers, 
+    getOrganizationFollowers, 
+    getMyFollowedOrganizations, 
+    getMyMemberOrganizations,
+    leaveOrganization,
+    bulkAddMembers,
+    bulkRemoveMembers,
 
  } from '../controllers/organization_controller.js';
-import { requireOrganizationOwnerAdminOrSuperAdmin, requireOrganizationOwnerOrSuperAdmin, requireSuperAdmin } from '../middleware/protectRoute.js';
+import { protectRouteUser, requireSuperAdmin, requireOrganizationAdmin } from '../middleware/protectRoute.js';
 
 const router = express.Router();
 
-router.post("/admin/organizations", protectRouteUser, requireSuperAdmin,createOrganization);
-router.put("/admin/organizations/:id", protectRouteUser, requireOrganizationOwnerOrSuperAdmin,updateOrganization);
-router.delete("/admin/organizations/:id", protectRouteUser, requireSuperAdmin,deleteOrganization);
-router.get("/admin/organizations", protectRouteUser, requireSuperAdmin,getAllOrganizations);
-router.get("/organizations/:id", protectRouteUser, requireSuperAdmin, getOrganizationById);
+router.post("/add-member/:id", protectRouteUser, requireOrganizationAdmin, addMemberToOrganization);
+router.delete("/remove-member/:id", protectRouteUser, requireOrganizationAdmin, removeMemberFromOrganization);
+router.post("/add-multiple-members/:id", protectRouteUser, requireOrganizationAdmin, bulkAddMembers);
+router.post("/remove-multiple-members/:id", protectRouteUser, requireOrganizationAdmin, bulkRemoveMembers);
+router.get("/organizations-by-id/:id", protectRouteUser, getOrganizationById);
 
-router.get("/organizations", protectRouteUser, getAllOrganizationsPublic);
+router.post("/follow/:id", protectRouteUser, followUnfollowOrganization);
+router.get("/all-organizations", protectRouteUser, getAllOrganizationsPublic);
 router.get("/organization-profile/:id", protectRouteUser, getOrganizationProfile);
 router.get("/search-organizations", protectRouteUser, searchOrganizations);
 router.get("/organization-members/:id", protectRouteUser, getOrganizationMembers);
 router.get("/organization-followers/:id", protectRouteUser, getOrganizationFollowers);
 router.get("/my/followed-organizations", protectRouteUser, getMyFollowedOrganizations);
 router.get("/my/member-organizations", protectRouteUser, getMyMemberOrganizations);
+router.delete("/leave/:id", protectRouteUser, leaveOrganization);
 
 export default router;
 
-
+ 

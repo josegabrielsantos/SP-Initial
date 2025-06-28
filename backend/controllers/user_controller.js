@@ -29,49 +29,6 @@ const getUserProfile = async (req, res) => {
     }
 }
 
-// const followUnfollowUser = async (req, res) => {
-//     try {
-//         const {id} = req.params;
-//         const userToModify = await User.findById(id);
-//         const currentUser = await User.findById(req.user._id);
-
-//         if (id === req.user._id.toString()){
-//             return res.status(400).json({error: "You can do that to yourself."});
-//         }
-
-//         if(!userToModify || !currentUser) {
-//             return res.status(400).json({error: "User not found."});
-//         }
-
-//         const isFollowing = currentUser.following.includes(id);
-
-//         if(isFollowing){ // if already following, will unfollow
-//             await User.findByIdAndUpdate(id, { $pull: { followers: req.user._id}});
-//             await User.findByIdAndUpdate(req.user._id, { $pull: { following: id}});
-//             return res.status(200).json({message: "Unfollowed Successfully."});
-//         }else{ // else, will follow
-//             await User.findByIdAndUpdate(id, { $push: { followers: req.user._id}});
-//             await User.findByIdAndUpdate(req.user._id, { $push: { following: id}});
-
-//             const newNotification = new Notification({
-//                 type: "follow",
-//                 from: req.user._id,
-//                 to: userToModify._id,
-//             });
-
-//             await newNotification.save();
-
-//             //TODO: return id of the user as response
-//             return res.status(200).json({message: "Followed Successfully."});
-//         }
-        
-
-//     } catch (error) {
-//         console.log("Error in followUnfollowUser");
-//         res.status(500).json({error:error.message});
-//     }
-// }
-
 const updateUserProfile = async (req, res) => {
     const {firstName, lastName, middleName, email, currentPassword, newPassword, affiliation, researchInterests, expertiseAreas} = req.body;
     let profilePicture = req.body.profilePicture;
@@ -141,36 +98,6 @@ const updateUserProfile = async (req, res) => {
     } catch (error) {
         console.log("Error in updateUserProfile");
         res.status(500).json({error: error.message});
-    }
-}
-
-const followUnfollowOrganization = async (req, res) => {
-    try {
-        const {id} = req.params;
-        const currentUser = await User.findById(req.user._id);
-        const organizationToModify = await Organization.findById(id);
-        
-        if(!organizationToModify || !currentUser) {
-            return res.status(400).json({error: "User not found."});
-        }
-
-        const isFollowing = currentUser.followingOrganization.includes(id);
-        if(isFollowing){
-            await Organization.findByIdAndUpdate(id, {$pull: { followers: req.user._id}});
-            await User.findByIdAndUpdate(req.user._id, { $pull: { followingOrganization: id}});
-            return res.status(200).json({message: "UnFollowed Successfully."});
-        }
-        else{
-            await Organization.findByIdAndUpdate(id, {$push: { followers: req.user._id}});
-            await User.findByIdAndUpdate(req.user._id, { $push: { followingOrganization: id}});
-        
-            return res.status(200).json({message: "Followed Successfully."});
-        }
-
-
-    } catch (error) {
-        console.log("Error in followUnfollowOrganization");
-        res.status(500).json({error:error.message});
     }
 }
 
@@ -382,48 +309,14 @@ const getUserPosts = async (req, res) => {
     }
 }
 
-const leaveOrganization = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const userId = req.user._id;
-
-        const user = await User.findById(userId);
-        const organization = await Organization.findById(id);
-
-        if (!organization) {
-            return res.status(404).json({ error: "Organization not found." });
-        }
-
-        if (!user.memberOrganization.includes(id)) {
-            return res.status(400).json({ error: "You are not a member of this organization." });
-        }
-
-        await User.findByIdAndUpdate(userId, {
-            $pull: { memberOrganization: id }
-        });
-
-        await Organization.findByIdAndUpdate(id, {
-            $pull: { members: userId }
-        });
-
-        res.status(200).json({ message: "Left organization successfully." });
-
-    } catch (error) {
-        console.log("Error in leaveOrganization", error.message);
-        res.status(500).json({ error: "Internal Server Error." });
-    }
-};
-
 export {
     getMe,
     getUserProfile,
     updateUserProfile,
-    followUnfollowOrganization,
     applyMembership,
     getUserFollowedOrganizations,
     getUserMemberships,
     getUserApplications,
     getUserLikedPosts,
     getUserPosts,
-    leaveOrganization,
 };

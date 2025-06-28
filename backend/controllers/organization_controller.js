@@ -1,4 +1,5 @@
 import Organization from "../models/organization_model.js";
+import User from "../models/user_model.js";
 import bcrypt from 'bcryptjs';
 import {v2 as cloudinary} from 'cloudinary';
 
@@ -6,7 +7,7 @@ import {v2 as cloudinary} from 'cloudinary';
 const createOrganization = async (req, res) => {
     try {
         const { organizationName, description, contactNumber, website, ownerId } = req.body;
-
+        console.log(organizationName, description, contactNumber, website, ownerId);
         if (!organizationName || !ownerId) {
             return res.status(400).json({ error: "Organization name and owner ID are required." });
         }
@@ -22,12 +23,18 @@ const createOrganization = async (req, res) => {
             contactNumber: contactNumber || "",
             website: website || "",
             owner: ownerId,
+            members: [ownerId],
+            followers: [ownerId],
         });
 
         await newOrganization.save();
 
         await User.findByIdAndUpdate(ownerId, {
-            $push: { ownedOrganizations: newOrganization._id }
+            $push: { 
+                ownedOrganizations: newOrganization._id,
+                memberOrganization: newOrganization._id,
+                followingOrganization: newOrganization._id
+            }
         });
 
         res.status(201).json({
@@ -85,7 +92,11 @@ const deleteOrganization = async (req, res) => {
 
         await User.updateMany(
             { ownedOrganizations: id },
-            { $pull: { ownedOrganizations: id } }
+            { $pull: { 
+                ownedOrganizations: id,
+                memberOrganization: id,
+                followingOrganization: id
+             }}
         );
 
         await User.updateMany(
@@ -136,11 +147,19 @@ const addOrganizationAdmin = async (req, res) => {
         }
 
         await Organization.findByIdAndUpdate(organization._id, {
-            $push: { admins: userId }
+            $push: { 
+                admins: userId,
+                followers: userId,
+                members: userId,
+             }
         });
 
         await User.findByIdAndUpdate(userId, {
-            $push: { adminOrganizations: organization._id }
+            $push: { 
+                adminOrganizations: organization._id, 
+                followingOrganization: organization._id,
+                memberOrganization: organization._id
+             }
         });
 
         res.status(200).json({ message: "Admin added successfully" });
@@ -181,6 +200,369 @@ const removeOrganizationAdmin = async (req, res) => {
     }
 };
 
+const addMemberToOrganization = async (req, res) => {
+    try {
+        const { id } = req.params; // organization id
+        const { userId } = req.body;
+
+        if (!userId) {
+            return res.status(400).json({ error: "User ID is required." });
+        }
+
+        const organization = await Organization.findById(id);
+        const user = await User.findById(userId);
+
+        if (!organization) {
+            return res.status(404).json({ error: "Organization not found." });
+        }
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
+        if (organization.members.includes(userId)) {
+            return res.status(400).json({ error: "User is already a member." });
+        }
+
+        await Organization.findByIdAndUpdate(id, {
+            $push: { members: userId }
+        });
+
+        await User.findByIdAndUpdate(userId, {
+            $push: { memberOrganization: id }
+        });
+
+        res.status(200).json({ message: "Member added successfully." });
+
+    } catch (error) {
+        console.log("Error in addMemberToOrganization", error.message);
+        res.status(500).json({ error: "Internal Server Error." });
+    }
+};
+
+const removeMemberFromOrganization = async (req, res) => {
+    try {
+        const { id, userId } = req.params; // organization id and user id
+
+        const organization = await Organization.findById(id);
+        const user = await User.findById(userId);
+
+        if (!organization) {
+            return res.status(404).json({ error: "Organization not found." });
+        }
+
+        if (!user) {
+            return res.status(404).json({ error: "User not found." });
+        }
+
+        if (!organization.members.includes(userId)) {
+            return res.status(400).json({ error: "User is not a member." });
+        }
+
+        if (organization.owner.toString() === userId) {
+            return res.status(400).json({ error: "Cannot remove owner from membership." });
+        }
+
+        if (organization.admins.includes(userId)) {
+            return res.status(400).json({ error: "Cannot remove admin from membership. Remove admin role first." });
+        }
+
+        await Organization.findByIdAndUpdate(id, {
+            $pull: { members: userId }
+        });
+
+        await User.findByIdAndUpdate(userId, {
+            $pull: { memberOrganization: id }
+        });
+
+        res.status(200).json({ message: "Member removed successfully." });
+
+    } catch (error) {
+        console.log("Error in removeMemberFromOrganization", error.message);
+        res.status(500).json({ error: "Internal Server Error." });
+    }
+};
+
+// Bulk Add Members (Admin+ only)
+const bulkAddMembers = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userIds, emailList } = req.body; // Can accept user IDs or email list
+        const organization = req.organization;
+
+        if (!userIds && !emailList) {
+            return res.status(400).json({ error: "User IDs or email list is required." });
+        }
+
+        let usersToAdd = [];
+        let results = {
+            success: [],
+            failed: [],
+            alreadyMembers: []
+        };
+
+        // If email list provided, find users by email
+        if (emailList && Array.isArray(emailList)) {
+            for (const email of emailList) {
+                const user = await User.findOne({ email: email.toLowerCase() });
+                if (user) {
+                    usersToAdd.push(user._id.toString());
+                } else {
+                    results.failed.push({ email, reason: "User not found" });
+                }
+            }
+        }
+
+        // If user IDs provided, use them directly
+        if (userIds && Array.isArray(userIds)) {
+            usersToAdd = [...usersToAdd, ...userIds];
+        }
+
+        // Remove duplicates
+        usersToAdd = [...new Set(usersToAdd)];
+
+        // Process each user
+        for (const userId of usersToAdd) {
+            try {
+                const user = await User.findById(userId);
+                if (!user) {
+                    results.failed.push({ userId, reason: "User not found" });
+                    continue;
+                }
+
+                // Check if already a member
+                if (organization.members.includes(userId)) {
+                    results.alreadyMembers.push({
+                        userId,
+                        email: user.email,
+                        name: `${user.firstName} ${user.lastName}`
+                    });
+                    continue;
+                }
+
+                // Add to organization
+                await Organization.findByIdAndUpdate(id, {
+                    $addToSet: { 
+                        members: userId,
+                        followers: userId // Also add as follower if not already
+                    }
+                });
+
+                // Add to user
+                await User.findByIdAndUpdate(userId, {
+                    $addToSet: { 
+                        memberOrganization: id,
+                        followingOrganization: id
+                    }
+                });
+
+                results.success.push({
+                    userId,
+                    email: user.email,
+                    name: `${user.firstName} ${user.lastName}`
+                });
+
+            } catch (userError) {
+                results.failed.push({ userId, reason: userError.message });
+            }
+        }
+
+        // Update organization statistics
+        await Organization.findByIdAndUpdate(id, {
+            $set: {
+                'statistics.totalMembers': await Organization.findById(id).then(org => org.members.length),
+                'statistics.totalFollowers': await Organization.findById(id).then(org => org.followers.length)
+            }
+        });
+
+        res.status(200).json({
+            message: "Bulk member addition completed",
+            results: {
+                totalProcessed: usersToAdd.length,
+                successfullyAdded: results.success.length,
+                failed: results.failed.length,
+                alreadyMembers: results.alreadyMembers.length,
+                details: results
+            }
+        });
+
+    } catch (error) {
+        console.log("Error in bulkAddMembers", error.message);
+        res.status(500).json({ error: "Internal Server Error." });
+    }
+};
+
+// Bulk Remove Members (Admin+ only)
+const bulkRemoveMembers = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { userIds, emailList, reason } = req.body; // Optional reason for removal
+        const organization = req.organization;
+        const currentUserId = req.user._id;
+
+        if (!userIds && !emailList) {
+            return res.status(400).json({ error: "User IDs or email list is required." });
+        }
+
+        let usersToRemove = [];
+        let results = {
+            success: [],
+            failed: [],
+            notMembers: [],
+            cannotRemove: []
+        };
+
+        // If email list provided, find users by email
+        if (emailList && Array.isArray(emailList)) {
+            for (const email of emailList) {
+                const user = await User.findOne({ email: email.toLowerCase() });
+                if (user) {
+                    usersToRemove.push(user._id.toString());
+                } else {
+                    results.failed.push({ email, reason: "User not found" });
+                }
+            }
+        }
+
+        // If user IDs provided, use them directly
+        if (userIds && Array.isArray(userIds)) {
+            usersToRemove = [...usersToRemove, ...userIds];
+        }
+
+        // Remove duplicates
+        usersToRemove = [...new Set(usersToRemove)];
+
+        // Process each user
+        for (const userId of usersToRemove) {
+            try {
+                const user = await User.findById(userId);
+                if (!user) {
+                    results.failed.push({ userId, reason: "User not found" });
+                    continue;
+                }
+
+                // Check if user is a member
+                if (!organization.members.includes(userId)) {
+                    results.notMembers.push({
+                        userId,
+                        email: user.email,
+                        name: `${user.firstName} ${user.lastName}`
+                    });
+                    continue;
+                }
+
+                // Cannot remove owner
+                if (organization.owner.toString() === userId) {
+                    results.cannotRemove.push({
+                        userId,
+                        email: user.email,
+                        name: `${user.firstName} ${user.lastName}`,
+                        reason: "Cannot remove organization owner"
+                    });
+                    continue;
+                }
+
+                // Cannot remove yourself (unless you're super admin)
+                if (userId === currentUserId.toString() && req.user.role !== 'superAdmin') {
+                    results.cannotRemove.push({
+                        userId,
+                        email: user.email,
+                        name: `${user.firstName} ${user.lastName}`,
+                        reason: "Cannot remove yourself"
+                    });
+                    continue;
+                }
+
+                // If user is admin, remove admin role first
+                if (organization.admins.includes(userId)) {
+                    await Organization.findByIdAndUpdate(id, {
+                        $pull: { admins: userId }
+                    });
+                    await User.findByIdAndUpdate(userId, {
+                        $pull: { adminOrganizations: id }
+                    });
+                }
+
+                // Remove from organization
+                await Organization.findByIdAndUpdate(id, {
+                    $pull: { 
+                        members: userId,
+                        authors: userId // Remove from authors if present
+                    }
+                });
+
+                // Remove from user
+                await User.findByIdAndUpdate(userId, {
+                    $pull: { memberOrganization: id }
+                });
+
+                results.success.push({
+                    userId,
+                    email: user.email,
+                    name: `${user.firstName} ${user.lastName}`,
+                    reason: reason || "Bulk removal"
+                });
+
+            } catch (userError) {
+                results.failed.push({ userId, reason: userError.message });
+            }
+        }
+
+        // Update organization statistics
+        await Organization.findByIdAndUpdate(id, {
+            $set: {
+                'statistics.totalMembers': await Organization.findById(id).then(org => org.members.length)
+            }
+        });
+
+        res.status(200).json({
+            message: "Bulk member removal completed",
+            results: {
+                totalProcessed: usersToRemove.length,
+                successfullyRemoved: results.success.length,
+                failed: results.failed.length,
+                notMembers: results.notMembers.length,
+                cannotRemove: results.cannotRemove.length,
+                details: results
+            }
+        });
+
+    } catch (error) {
+        console.log("Error in bulkRemoveMembers", error.message);
+        res.status(500).json({ error: "Internal Server Error." });
+    }
+};
+
+const followUnfollowOrganization = async (req, res) => {
+    try {
+        const {id} = req.params;
+        const currentUser = await User.findById(req.user._id);
+        const organizationToModify = await Organization.findById(id);
+        
+        if(!organizationToModify || !currentUser) {
+            return res.status(400).json({error: "User not found."});
+        }
+
+        const isFollowing = currentUser.followingOrganization.includes(id);
+        if(isFollowing){
+            await Organization.findByIdAndUpdate(id, {$pull: { followers: req.user._id}});
+            await User.findByIdAndUpdate(req.user._id, { $pull: { followingOrganization: id}});
+            return res.status(200).json({message: "UnFollowed Successfully."});
+        }
+        else{
+            await Organization.findByIdAndUpdate(id, {$push: { followers: req.user._id}});
+            await User.findByIdAndUpdate(req.user._id, { $push: { followingOrganization: id}});
+        
+            return res.status(200).json({message: "Followed Successfully."});
+        }
+
+
+    } catch (error) {
+        console.log("Error in followUnfollowOrganization");
+        res.status(500).json({error:error.message});
+    }
+}
+
 const getAllOrganizations = async (req, res) => {
     try {
         const organizations = await Organization.find()
@@ -199,6 +581,7 @@ const getAllOrganizations = async (req, res) => {
 const getOrganizationById = async (req, res) => {
     try {
         const { id } = req.params;
+
 
         const organization = await Organization.findById(id)
             .populate('owner', 'firstName lastName email profilePicture')
@@ -525,6 +908,183 @@ const getOrganizationFollowers = async (req, res) => {
     }
 };
 
+const getOrganizationStatistics = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user?._id;
+        const userRole = req.user?.role;
+
+        const organization = await Organization.findById(id)
+            .populate('posts')
+            .populate('members', 'createdAt')
+            .populate('followers', 'createdAt')
+            .populate('admins', 'createdAt');
+
+        if (!organization) {
+            return res.status(404).json({ error: "Organization not found." });
+        }
+
+        // Calculate various statistics
+        const now = new Date();
+        const oneMonthAgo = new Date(now.getFullYear(), now.getMonth() - 1, now.getDate());
+        const threeMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 3, now.getDate());
+        const oneYearAgo = new Date(now.getFullYear() - 1, now.getMonth(), now.getDate());
+
+        // Member growth statistics
+        const totalMembers = organization.members.length;
+        const newMembersThisMonth = organization.members.filter(
+            member => new Date(member.createdAt) >= oneMonthAgo
+        ).length;
+        const newMembersThreeMonths = organization.members.filter(
+            member => new Date(member.createdAt) >= threeMonthsAgo
+        ).length;
+
+        // Follower growth statistics
+        const totalFollowers = organization.followers.length;
+        const newFollowersThisMonth = organization.followers.filter(
+            follower => new Date(follower.createdAt) >= oneMonthAgo
+        ).length;
+
+        // Post statistics
+        const totalPosts = organization.posts.length;
+        const postsThisMonth = organization.posts.filter(
+            post => new Date(post.createdAt) >= oneMonthAgo
+        ).length;
+        const postsThreeMonths = organization.posts.filter(
+            post => new Date(post.createdAt) >= threeMonthsAgo
+        ).length;
+
+        // Engagement statistics (if you have likes/comments on posts)
+        let totalLikes = 0;
+        let totalComments = 0;
+        organization.posts.forEach(post => {
+            totalLikes += post.likes?.length || 0;
+            totalComments += post.comments?.length || 0;
+        });
+
+        // Calculate growth rates
+        const memberGrowthRate = totalMembers > 0 ? 
+            ((newMembersThisMonth / totalMembers) * 100).toFixed(1) : 0;
+        const followerGrowthRate = totalFollowers > 0 ? 
+            ((newFollowersThisMonth / totalFollowers) * 100).toFixed(1) : 0;
+
+        // Admin count
+        const totalAdmins = organization.admins.length;
+
+        // Basic statistics available to all registered users
+        const basicStats = {
+            overview: {
+                totalMembers,
+                totalFollowers,
+                totalAdmins,
+                totalPosts,
+                organizationAge: Math.floor((now - new Date(organization.createdAt)) / (1000 * 60 * 60 * 24)) // days
+            },
+            growth: {
+                newMembersThisMonth,
+                newFollowersThisMonth,
+                memberGrowthRate: `${memberGrowthRate}%`,
+                followerGrowthRate: `${followerGrowthRate}%`
+            },
+            activity: {
+                postsThisMonth,
+                avgPostsPerMonth: totalPosts > 0 ? 
+                    (totalPosts / Math.max(1, Math.floor((now - new Date(organization.createdAt)) / (1000 * 60 * 60 * 24 * 30)))).toFixed(1) : 0
+            }
+        };
+
+        // Check user's relationship with organization for detailed stats
+        const isOwner = organization.owner.toString() === userId?.toString();
+        const isAdmin = organization.admins.some(admin => admin._id.toString() === userId?.toString());
+        const isMember = organization.members.some(member => member._id.toString() === userId?.toString());
+        const isSuperAdmin = userRole === 'superAdmin';
+
+        // Enhanced statistics for members and above
+        if (isMember || isAdmin || isOwner || isSuperAdmin) {
+            basicStats.engagement = {
+                totalLikes,
+                totalComments,
+                avgLikesPerPost: totalPosts > 0 ? (totalLikes / totalPosts).toFixed(1) : 0,
+                avgCommentsPerPost: totalPosts > 0 ? (totalComments / totalPosts).toFixed(1) : 0
+            };
+
+            basicStats.membershipTrends = {
+                newMembersThreeMonths,
+                memberRetentionRate: "85%", // You'd calculate this based on active members
+                mostActiveMembers: [] // Top contributors by posts/comments
+            };
+        }
+
+        // Advanced statistics for admins and above
+        if (isAdmin || isOwner || isSuperAdmin) {
+            // Monthly breakdown for the last 6 months
+            const monthlyBreakdown = [];
+            for (let i = 5; i >= 0; i--) {
+                const monthStart = new Date(now.getFullYear(), now.getMonth() - i, 1);
+                const monthEnd = new Date(now.getFullYear(), now.getMonth() - i + 1, 0);
+                
+                const membersJoined = organization.members.filter(
+                    member => new Date(member.createdAt) >= monthStart && new Date(member.createdAt) <= monthEnd
+                ).length;
+                
+                const postsCreated = organization.posts.filter(
+                    post => new Date(post.createdAt) >= monthStart && new Date(post.createdAt) <= monthEnd
+                ).length;
+
+                monthlyBreakdown.push({
+                    month: monthStart.toLocaleDateString('en-US', { month: 'short', year: 'numeric' }),
+                    membersJoined,
+                    postsCreated
+                });
+            }
+
+            basicStats.detailed = {
+                monthlyBreakdown,
+                topPerformingPosts: organization.posts
+                    .sort((a, b) => (b.likes?.length || 0) - (a.likes?.length || 0))
+                    .slice(0, 5)
+                    .map(post => ({
+                        _id: post._id,
+                        title: post.title,
+                        likes: post.likes?.length || 0,
+                        comments: post.comments?.length || 0,
+                        createdAt: post.createdAt
+                    })),
+                adminActivity: {
+                    totalAdmins,
+                    adminJoinDates: organization.admins.map(admin => ({
+                        adminId: admin._id,
+                        joinedAt: admin.createdAt
+                    }))
+                }
+            };
+        }
+
+        // Super detailed stats for owners and super admins
+        if (isOwner || isSuperAdmin) {
+            basicStats.management = {
+                pendingApplications: organization.applicants?.length || 0,
+                reportedContent: 0, // You'd implement content reporting
+                organizationHealth: "Good", // Based on engagement metrics
+                recommendations: [
+                    "Consider hosting events to increase member engagement",
+                    "Create more regular content to boost follower growth"
+                ]
+            };
+        }
+
+        res.status(200).json({
+            organizationName: organization.organizationName,
+            statistics: basicStats,
+            lastUpdated: now.toISOString()
+        });
+
+    } catch (error) {
+        console.log("Error in getOrganizationStatistics", error.message);
+        res.status(500).json({ error: "Internal Server Error." });
+    }
+};
+
 // Get user's followed organizations
 const getMyFollowedOrganizations = async (req, res) => {
     try {
@@ -577,22 +1137,61 @@ const getMyMemberOrganizations = async (req, res) => {
     }
 };
 
+const leaveOrganization = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const userId = req.user._id;
+
+        const user = await User.findById(userId);
+        const organization = await Organization.findById(id);
+
+        if (!organization) {
+            return res.status(404).json({ error: "Organization not found." });
+        }
+
+        if (!user.memberOrganization.includes(id)) {
+            return res.status(400).json({ error: "You are not a member of this organization." });
+        }
+
+        await User.findByIdAndUpdate(userId, {
+            $pull: { memberOrganization: id }
+        });
+
+        await Organization.findByIdAndUpdate(id, {
+            $pull: { members: userId }
+        });
+
+        res.status(200).json({ message: "Left organization successfully." });
+
+    } catch (error) {
+        console.log("Error in leaveOrganization", error.message);
+        res.status(500).json({ error: "Internal Server Error." });
+    }
+};
+
 export {
     createOrganization,
     updateOrganization,
     deleteOrganization,
     addOrganizationAdmin,
     removeOrganizationAdmin,
+    addMemberToOrganization,
+    removeMemberFromOrganization,
+    bulkAddMembers,
+    bulkRemoveMembers,
     getAllOrganizations,
     getOrganizationById,
+    followUnfollowOrganization,
 
     getOrganizationProfile,
     getAllOrganizationsPublic,
     searchOrganizations,
     getOrganizationMembers,
     getOrganizationFollowers,
+    getOrganizationStatistics,
     getMyFollowedOrganizations,
-    getMyMemberOrganizations
+    getMyMemberOrganizations,
+    leaveOrganization
 };
 
 

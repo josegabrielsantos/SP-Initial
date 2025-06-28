@@ -6,10 +6,11 @@ import { getLikedPosts } from "./post_controller.js";
 
 const signup = async (req, res) => {
     try{
-        const {firstName, lastName, middleName, email, password} = req.body;
+        const {firstName, lastName, middleName, email, password, role} = req.body;
 
         //checks if email format used is valid 
         const emailRegex = /^\w+([\.-]?\w+)*@\w+([\.-]?\w+)*(\.\w{2,3})+$/;
+        console.log("Email received:", email);
         if(!emailRegex.test(email)){
             return res.status(400).json({ error: "Invalid email format."});
         }
@@ -34,6 +35,7 @@ const signup = async (req, res) => {
             middleName: middleName,
             email: email,
             password: hashedPassword,
+            role: role || "registered_user"
         })
 
         if(newUser){
@@ -55,6 +57,7 @@ const signup = async (req, res) => {
                 applicationForPosts: newUser.applicationForPosts,
                 posts: newUser.posts,
             });
+
         }else{
             res.status(400).json({ error: "Invalid user data."});
         }

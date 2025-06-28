@@ -13,31 +13,6 @@ const esClient = new Client({
     },
 });
 
-// export const syncExistingData = async () => {
-//     try {
-//         const papers = await Paper.find();
-//         // console.log(papers)
-//     // Sync each paper to Elasticsearch
-//         const bulkOps = papers.flatMap((paper) => [
-//             { index: { _index: 'papers', _id: paper._id.toString() } }, // Elasticsearch bulk operation format
-//             paper
-//         ]);
-
-//         // Perform bulk operation
-//         const { body } = await esClient.bulk({ refresh: true, body: bulkOps });
-
-//         // Log errors, if any
-//         // if (body.errors) {
-//         //     const erroredDocuments = body.items.filter((item) => item.index && item.index.error);
-//         //     console.error('Some documents failed to index:', erroredDocuments);
-//         // } else {
-//         //     console.log('All existing data synced successfully to Elasticsearch.');
-//         // }
-//     } catch (error) {
-//         console.error('Error syncing existing data:', error);   
-//     }
-// }
-
 export const syncExistingData = async () => {
     try {
       // Connect to MongoDB

@@ -5,23 +5,28 @@ import {
     updatePaper, 
     deletePaper, 
     searchPapers, 
-    getPaperByAuthor, 
+    getPapersByAuthor, 
     getAllPapers,
-    getPaperByKeyword
+    getPaperByKeyword,
+    getOrganizationPapers,
+    bulkUploadPapers
 } from '../controllers/paper_controller.js';
-import { protectRoute } from '../middleware/protectRoute.js';
+import { protectRouteUser, requireSuperAdmin, requireOrganizationAdmin, requireOrganizationOwner, requireOrganizationMember } from '../middleware/protectRoute.js';
 
 const router = express.Router();
 
-router.post('/create', protectRoute, createPaper);
-router.post('/:id', protectRoute, updatePaper);
-router.delete('/:id', protectRoute, deletePaper);
+router.post('/create/:id', protectRouteUser, requireOrganizationAdmin, createPaper);
+router.post('update/:id', protectRouteUser, requireOrganizationAdmin, updatePaper);
+router.delete('delete/:id', protectRouteUser, requireOrganizationAdmin,deletePaper);
 
-router.get('/search', protectRoute, searchPapers);
-router.get('/search-author', protectRoute, getPaperByAuthor);
-router.get('/search-keyword', protectRoute, getPaperByKeyword);
-router.get('/', protectRoute, getAllPapers);
-router.get('/:id', protectRoute, getPaperById);
+router.get('/search', protectRouteUser, requireOrganizationMember, searchPapers);
+// router.get('/search-author', protectRouteUser, getPaperByAuthor);
+// router.get('/search-keyword', protectRouteUser, getPaperByKeyword);
+// router.get('/', protectRouteUser, getAllPapers);
+router.get('/get-organization-papers/:id', protectRouteUser, requireOrganizationMember, getOrganizationPapers);
+router.get('/get-paper/:id', protectRouteUser, requireOrganizationMember, getPaperById);
+router.get('/get-by-author/id', protectRouteUser, requireOrganizationMember, getPapersByAuthor);
+router.post('/bulk-upload/:id', protectRouteUser, requireOrganizationAdmin, bulkUploadPapers);
 
 
 export default router;
