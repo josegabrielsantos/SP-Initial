@@ -14,9 +14,10 @@ import {
     leaveOrganization,
     bulkAddMembers,
     bulkRemoveMembers,
+    addOrganizationAdmin,
 
  } from '../controllers/organization_controller.js';
-import { protectRouteUser, requireSuperAdmin, requireOrganizationAdmin } from '../middleware/protectRoute.js';
+import { protectRouteUser, requireSuperAdmin, requireOrganizationAdmin, requireOrganizationOwner } from '../middleware/protectRoute.js';
 
 const router = express.Router();
 
@@ -25,6 +26,8 @@ router.delete("/remove-member/:id", protectRouteUser, requireOrganizationAdmin, 
 router.post("/add-multiple-members/:id", protectRouteUser, requireOrganizationAdmin, bulkAddMembers);
 router.post("/remove-multiple-members/:id", protectRouteUser, requireOrganizationAdmin, bulkRemoveMembers);
 router.get("/organizations-by-id/:id", protectRouteUser, getOrganizationById);
+router.post("/:id/admins", protectRouteUser, requireOrganizationOwner, addOrganizationAdmin);
+router.delete("/:orgId/admins/:id", protectRouteUser, requireOrganizationOwner, addOrganizationAdmin);
 
 router.post("/follow/:id", protectRouteUser, followUnfollowOrganization);
 router.get("/all-organizations", protectRouteUser, getAllOrganizationsPublic);

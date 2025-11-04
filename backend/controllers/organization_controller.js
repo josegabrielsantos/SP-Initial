@@ -3,7 +3,7 @@ import User from "../models/user_model.js";
 import bcrypt from 'bcryptjs';
 import {v2 as cloudinary} from 'cloudinary';
 
-
+//admin routes
 const createOrganization = async (req, res) => {
     try {
         const { organizationName, description, contactNumber, website, ownerId } = req.body;
@@ -53,7 +53,7 @@ const createOrganization = async (req, res) => {
     }
 };
 
-
+//admin routes
 const updateOrganization = async (req, res) => {
     try {
         const { organizationName, description, contactNumber, website } = req.body;
@@ -81,6 +81,7 @@ const updateOrganization = async (req, res) => {
     }
 };
 
+//admin routes
 const deleteOrganization = async (req, res) => {
     try {
         const { id } = req.params;
@@ -124,6 +125,7 @@ const deleteOrganization = async (req, res) => {
     }
 };
 
+// organization routes
 const addOrganizationAdmin = async (req, res) => {
     try {
         const { userId } = req.body;
@@ -169,6 +171,7 @@ const addOrganizationAdmin = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error." });
     }
 };
+
 
 const removeOrganizationAdmin = async (req, res) => {
     try {
@@ -282,7 +285,6 @@ const removeMemberFromOrganization = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error." });
     }
 };
-
 // Bulk Add Members (Admin+ only)
 const bulkAddMembers = async (req, res) => {
     try {
@@ -532,7 +534,6 @@ const bulkRemoveMembers = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error." });
     }
 };
-
 const followUnfollowOrganization = async (req, res) => {
     try {
         const {id} = req.params;
@@ -563,6 +564,7 @@ const followUnfollowOrganization = async (req, res) => {
     }
 }
 
+//admin routes
 const getAllOrganizations = async (req, res) => {
     try {
         const organizations = await Organization.find()

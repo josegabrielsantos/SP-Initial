@@ -76,12 +76,6 @@ const userSchema = new mongoose.Schema(
          ref: "Organization",
        }
      ],
-    //  applicationForMembership: [
-    //    {
-    //      type: mongoose.Schema.Types.ObjectId,
-    //      ref: "Organization",
-    //    }
-    //  ],
      applicationsForPosts: [
        {
          type: mongoose.Schema.Types.ObjectId,

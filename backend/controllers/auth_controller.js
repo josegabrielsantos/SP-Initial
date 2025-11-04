@@ -2,7 +2,6 @@ import User from "../models/user_model.js";
 import Organization from "../models/organization_model.js";
 import bcrypt from 'bcryptjs';
 import { generateTokenandSetCookie } from "../lib/util/generateToken.js";
-import { getLikedPosts } from "./post_controller.js";
 
 const signup = async (req, res) => {
     try{

@@ -6,12 +6,10 @@ import {
     deletePaper, 
     searchPapers, 
     getPapersByAuthor, 
-    getAllPapers,
-    getPaperByKeyword,
     getOrganizationPapers,
     bulkUploadPapers
 } from '../controllers/paper_controller.js';
-import { protectRouteUser, requireSuperAdmin, requireOrganizationAdmin, requireOrganizationOwner, requireOrganizationMember } from '../middleware/protectRoute.js';
+import { protectRouteUser, requireOrganizationAdmin, requireOrganizationOwner, requireOrganizationMember } from '../middleware/protectRoute.js';
 
 const router = express.Router();
 
@@ -22,7 +20,6 @@ router.delete('delete/:id', protectRouteUser, requireOrganizationAdmin,deletePap
 router.get('/search', protectRouteUser, requireOrganizationMember, searchPapers);
 // router.get('/search-author', protectRouteUser, getPaperByAuthor);
 // router.get('/search-keyword', protectRouteUser, getPaperByKeyword);
-// router.get('/', protectRouteUser, getAllPapers);
 router.get('/get-organization-papers/:id', protectRouteUser, requireOrganizationMember, getOrganizationPapers);
 router.get('/get-paper/:id', protectRouteUser, requireOrganizationMember, getPaperById);
 router.get('/get-by-author/id', protectRouteUser, requireOrganizationMember, getPapersByAuthor);

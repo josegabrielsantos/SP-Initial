@@ -122,10 +122,6 @@ const organizationSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"
     }],
-    // membershipApplications: [{
-    //     type: mongoose.Schema.Types.ObjectId,
-    //     ref: "User"
-    // }],
     posts: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "Post"

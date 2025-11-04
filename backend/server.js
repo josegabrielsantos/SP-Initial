@@ -6,10 +6,12 @@ import postRoutes from "./routes/post_routes.js";
 import organizationRoutes from "./routes/organization_routes.js";
 import paperRoutes from "./routes/paper_routes.js";
 import adminRoutes from "./routes/admin_routes.js";
+import searchRoutes from "./routes/search_routes.js";
 import connectDB from "./database/connectDB.js";
 import cookieParser from "cookie-parser";
 import {v2 as cloudinary} from "cloudinary";
 import { syncExistingData } from './elastic/elastic_client.js'
+import Organization from "./models/organization_model.js";
 
 dotenv.config();
 
@@ -33,9 +35,23 @@ app.use("/api/post", postRoutes);
 app.use("/api/organization", organizationRoutes);
 app.use("/api/paper", paperRoutes);
 app.use("/api/admin", adminRoutes);
+app.use("/api/search", searchRoutes);
 
 app.listen (PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     connectDB();
     syncExistingData();
+    (async () => {
+    const indexes = await Organization.collection.getIndexes();
+    const allowedIndexes = ["_id_"]; // keep the default index
+
+    for (const indexName of Object.keys(indexes)) {
+        if (!allowedIndexes.includes(indexName)) {
+        console.log(`Dropping unused index: ${indexName}`);
+        await Organization.collection.dropIndex(indexName);
+        }
+    }
+
+    console.log("✅ Cleaned up unused indexes");
+    })();
 })

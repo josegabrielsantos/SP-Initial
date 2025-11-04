@@ -30,7 +30,7 @@ const getUserProfile = async (req, res) => {
 }
 
 const updateUserProfile = async (req, res) => {
-    const {firstName, lastName, middleName, email, currentPassword, newPassword, affiliation, researchInterests, expertiseAreas} = req.body;
+    const {firstName, lastName, middleName, currentPassword, newPassword, affiliation, researchInterests, expertiseAreas} = req.body;
     let profilePicture = req.body.profilePicture;
     const userId = req.user._id;
 
@@ -53,12 +53,12 @@ const updateUserProfile = async (req, res) => {
         }
 
         // Check email uniqueness if email is being updated
-        if(email && email !== user.email) {
-            const existingUser = await User.findOne({ email: email.toLowerCase() });
-            if(existingUser) {
-                return res.status(400).json({error: "Email already exists." });
-            }
-        }
+        // if(email && email !== user.email) {
+        //     const existingUser = await User.findOne({ email: email.toLowerCase() });
+        //     if(existingUser) {
+        //         return res.status(400).json({error: "Email already exists." });
+        //     }
+        // }
 
         // Handle profile picture upload
         if(profilePicture){
@@ -101,45 +101,8 @@ const updateUserProfile = async (req, res) => {
     }
 }
 
-const applyMembership = async (req, res) => {
-    try {
-        const {id} = req.params;
-        const currentUser = await User.findById(req.user._id);
-        const organizationToModify = await Organization.findById(id);
 
-        if(!organizationToModify || !currentUser) {
-            return res.status(400).json({error: "User or Organization not found."});
-        }
-
-        // Check if user is already a member
-        const isMember = currentUser.memberOrganizations.includes(id);
-        if(isMember) {
-            return res.status(400).json({error: "You are already a member of this organization."});
-        }
-
-        // Check if user has already applied
-        const hasApplied = currentUser.applicationForMembership.includes(id);
-
-        if(hasApplied){
-            // Remove application
-            await Organization.findByIdAndUpdate(id, {$pull: { applicants: req.user._id}});
-            await User.findByIdAndUpdate(req.user._id, { $pull: { applicationForMembership: id}});
-            return res.status(200).json({message: "Application cancelled successfully."});
-        }
-        else{
-            // Apply for membership
-            await Organization.findByIdAndUpdate(id, {$push: { applicants: req.user._id}});
-            await User.findByIdAndUpdate(req.user._id, { $push: { applicationForMembership: id}});
-        
-            return res.status(200).json({message: "Applied for membership successfully."});
-        }
-    } catch (error) {
-        console.log("Error in applyMembership");
-        res.status(500).json({error: error.message});
-    }
-}
-
-const getUserFollowedOrganizations = async (req, res) => {
+const getMyFollowedOrganizations = async (req, res) => {
     try {
         const userId = req.user._id;
         
@@ -161,8 +124,7 @@ const getUserFollowedOrganizations = async (req, res) => {
     }
 }
 
-// Get user's organization memberships
-const getUserMemberships = async (req, res) => {
+const getMyMemberships = async (req, res) => {
     try {
         const userId = req.user._id;
         
@@ -184,25 +146,147 @@ const getUserMemberships = async (req, res) => {
     }
 }
 
-// Get user's pending membership applications
-const getUserApplications = async (req, res) => {
+const getMyLikedPosts = async (req, res) => {
+    try {
+        const {id} = req.params;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+        
+        const user = await User.findById(id)
+            .populate({
+                path: 'likedPosts',
+                populate: [
+                    {
+                        path: 'author',
+                        select: 'firstName lastName profilePicture'
+                    },
+                    {
+                        path: 'organization',
+                        select: 'name logo'
+                    }
+                ],
+                options: {
+                    sort: { createdAt: -1 },
+                    skip: skip,
+                    limit: limit
+                }
+            })
+            .select('likedPosts');
+        
+        if(!user) {
+            return res.status(404).json({error: "User not found."});
+        }
+        
+        // Get total count for pagination
+        const totalLikedPosts = await User.findById(id).select('likedPosts');
+        const totalCount = totalLikedPosts.likedPosts.length;
+        
+        res.status(200).json({
+            likedPosts: user.likedPosts,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalPosts: totalCount,
+                hasNextPage: page < Math.ceil(totalCount / limit),
+                hasPrevPage: page > 1
+            }
+        });
+    } catch (error) {
+        console.log("Error in getUserLikedPosts");
+        res.status(500).json({error: error.message});
+    }
+}
+
+const getMyPosts = async (req, res) => {
     try {
         const userId = req.user._id;
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
         
         const user = await User.findById(userId)
-            .populate('applicationForMembership', 'name description logo website email')
-            .select('applicationForMembership');
+            .populate({
+                path: 'posts',
+                populate: [
+                    {
+                        path: 'organization',
+                        select: 'name logo'
+                    }
+                ],
+                options: {
+                    sort: { createdAt: -1 },
+                    skip: skip,
+                    limit: limit
+                }
+            })
+            .select('posts');
+        
+        if(!user) {
+            return res.status(404).json({error: "User not found."});
+        }
+        
+        // Get total count for pagination
+        const totalUserPosts = await User.findById(userId).select('posts');
+        const totalCount = totalUserPosts.posts.length;
+        
+        res.status(200).json({
+            posts: user.posts,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalCount / limit),
+                totalPosts: totalCount,
+                hasNextPage: page < Math.ceil(totalCount / limit),
+                hasPrevPage: page > 1
+            }
+        });
+    } catch (error) {
+        console.log("Error in getUserPosts");
+        res.status(500).json({error: error.message});
+    }
+}
+
+const getUserFollowedOrganizations = async (req, res) => {
+    try {
+        const {id} = req.params;
+        
+        const user = await User.findById(id)
+            .populate('followingOrganization', 'name description logo website email followers members')
+            .select('followingOrganization');
         
         if(!user) {
             return res.status(404).json({error: "User not found."});
         }
         
         res.status(200).json({
-            pendingApplications: user.applicationForMembership,
-            count: user.applicationForMembership.length
+            followedOrganizations: user.followingOrganization,
+            count: user.followingOrganization.length
         });
     } catch (error) {
-        console.log("Error in getUserApplications");
+        console.log("Error in getUserFollowedOrganizations");
+        res.status(500).json({error: error.message});
+    }
+}
+
+// Get user's organization memberships
+const getUserMemberships = async (req, res) => {
+    try {
+        const {id} = req.params;
+    
+        const user = await User.findById(id)
+            .populate('memberOrganizations', 'name description logo website email followers members')
+            .select('memberOrganizations');
+        
+        if(!user) {
+            return res.status(404).json({error: "User not found."});
+        }
+        
+        res.status(200).json({
+            memberships: user.memberOrganizations,
+            count: user.memberOrganizations.length
+        });
+    } catch (error) {
+        console.log("Error in getUserMemberships");
         res.status(500).json({error: error.message});
     }
 }
@@ -263,12 +347,12 @@ const getUserLikedPosts = async (req, res) => {
 // Get user's created postsawda
 const getUserPosts = async (req, res) => {
     try {
-        const userId = req.user._id;
+        const {id} = req.params;
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
         const skip = (page - 1) * limit;
         
-        const user = await User.findById(userId)
+        const user = await User.findById(id)
             .populate({
                 path: 'posts',
                 populate: [
@@ -290,7 +374,7 @@ const getUserPosts = async (req, res) => {
         }
         
         // Get total count for pagination
-        const totalUserPosts = await User.findById(userId).select('posts');
+        const totalUserPosts = await User.findById(id).select('posts');
         const totalCount = totalUserPosts.posts.length;
         
         res.status(200).json({
@@ -311,12 +395,15 @@ const getUserPosts = async (req, res) => {
 
 export {
     getMe,
+    getMyMemberships,
+    getMyPosts,
+    getMyLikedPosts,
+    getMyFollowedOrganizations,
+
     getUserProfile,
     updateUserProfile,
-    applyMembership,
     getUserFollowedOrganizations,
     getUserMemberships,
-    getUserApplications,
     getUserLikedPosts,
     getUserPosts,
 };

@@ -6,16 +6,29 @@ import {getMe,
         getUserFollowedOrganizations,
         getUserMemberships,
         getUserLikedPosts,
-        getUserPosts} from '../controllers/user_controller.js';
+        getUserPosts,
+        getMyMemberships,
+        getMyPosts,
+        getMyLikedPosts,
+        getMyFollowedOrganizations
+} from '../controllers/user_controller.js';
 
 const router = express.Router();
 
 router.get("/me", protectRouteUser, getMe);
-router.get("/profile/:id", protectRouteUser, getUserProfile);
+router.get("/my-posts", protectRouteUser, getMyPosts);
+router.get("/my-memberships", protectRouteUser, getMyMemberships);
+router.get("/my-liked-posts", protectRouteUser, getMyLikedPosts);
+router.get("/my-followed-organizations", protectRouteUser, getMyFollowedOrganizations);
 router.post("/update", protectRouteUser, updateUserProfile);
-router.get("/followed-organizations", protectRouteUser, getUserFollowedOrganizations);
-router.get("/memberships", protectRouteUser, getUserMemberships);
-router.get("/liked-posts", protectRouteUser, getUserLikedPosts);
-router.get("/posts", protectRouteUser, getUserPosts);
+// router.get("/my-pending-posts", protectRouteUser, );
+
+router.get("/:id/profile/", protectRouteUser, getUserProfile);
+router.get("/:id/followed-organizations", protectRouteUser, getUserFollowedOrganizations);
+router.get("/:id/memberships", protectRouteUser, getUserMemberships);
+router.get("/:id/liked-posts", protectRouteUser, getUserLikedPosts);
+router.get("/:id/posts", protectRouteUser, getUserPosts);
+
+
 
 export default router;

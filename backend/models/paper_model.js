@@ -31,10 +31,10 @@ const paperSchema = new mongoose.Schema({
     doi: {
         type: String,
         trim: true,
-        sparse: true, // Allows multiple documents without DOI
+        sparse: true,
+        index: true, // Index defined here
         validate: {
             validator: function(v) {
-                // Basic DOI format validation
                 return !v || /^10\.\d{4,}\/[-._;()\/:a-zA-Z0-9]+$/.test(v);
             },
             message: 'Invalid DOI format'
@@ -197,7 +197,7 @@ const paperSchema = new mongoose.Schema({
 // Indexes for better query performance
 paperSchema.index({ organization: 1, createdAt: -1 });
 paperSchema.index({ 'authors.user': 1 });
-paperSchema.index({ doi: 1 }, { sparse: true });
+// paperSchema.index({ doi: 1 }, { sparse: true });
 paperSchema.index({ title: 'text', abstract: 'text', keywords: 'text' });
 paperSchema.index({ fields: 1 });
 paperSchema.index({ status: 1 });
