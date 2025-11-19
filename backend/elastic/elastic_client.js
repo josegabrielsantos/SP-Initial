@@ -4,7 +4,7 @@ import mongoose from 'mongoose';
 import Paper from '../models/paper_model.js';
 import User from '../models/user_model.js';
 import Organization from '../models/organization_model.js';
-import Post from '../models/post_model.js'; // Assuming you have a Post model
+// import Post from '../models/post_model.js';
 import { Client } from '@elastic/elasticsearch';
 
 const esClient = new Client({

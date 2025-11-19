@@ -75,6 +75,29 @@
 
 import mongoose from "mongoose";
 
+const topicSchema = new mongoose.Schema({
+  name: {
+    type: String,
+    required: true,
+    trim: true,
+    maxlength: 50
+  },
+  color: {
+    type: String,
+    default: '#3b82f6',
+    match: /^#[0-9A-Fa-f]{6}$/
+  },
+  backgroundColor: {
+    type: String,
+    default: '#eff6ff',
+    match: /^#[0-9A-Fa-f]{6}$/
+  },
+  icon: {
+    type: String,
+    maxlength: 10 // emoji or icon identifier
+  }
+}, { _id: false });
+
 const organizationSchema = new mongoose.Schema({
     organizationName: {
         type: String,
@@ -114,6 +137,10 @@ const organizationSchema = new mongoose.Schema({
         ref: "User",
         required: true
     }],
+    topics: {
+        type: [topicSchema],
+        default: []
+    },
     followers: [{
         type: mongoose.Schema.Types.ObjectId,
         ref: "User"

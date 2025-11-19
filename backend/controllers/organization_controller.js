@@ -125,7 +125,9 @@ const deleteOrganization = async (req, res) => {
     }
 };
 
-// organization routes
+
+
+// organization routes ADD REMOVE ADMIN AND MEMBERS
 const addOrganizationAdmin = async (req, res) => {
     try {
         const { userId } = req.body;
@@ -171,7 +173,6 @@ const addOrganizationAdmin = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error." });
     }
 };
-
 
 const removeOrganizationAdmin = async (req, res) => {
     try {
@@ -285,7 +286,7 @@ const removeMemberFromOrganization = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error." });
     }
 };
-// Bulk Add Members (Admin+ only)
+
 const bulkAddMembers = async (req, res) => {
     try {
         const { id } = req.params;
@@ -394,7 +395,7 @@ const bulkAddMembers = async (req, res) => {
     }
 };
 
-// Bulk Remove Members (Admin+ only)
+
 const bulkRemoveMembers = async (req, res) => {
     try {
         const { id } = req.params;
@@ -534,6 +535,10 @@ const bulkRemoveMembers = async (req, res) => {
         res.status(500).json({ error: "Internal Server Error." });
     }
 };
+
+
+
+
 const followUnfollowOrganization = async (req, res) => {
     try {
         const {id} = req.params;
@@ -563,6 +568,7 @@ const followUnfollowOrganization = async (req, res) => {
         res.status(500).json({error:error.message});
     }
 }
+
 
 //admin routes
 const getAllOrganizations = async (req, res) => {
@@ -771,51 +777,113 @@ const getAllOrganizationsPublic = async (req, res) => {
 };
 
 // Search organizations (public)
-const searchOrganizations = async (req, res) => {
-    try {
-        const { query, page = 1, limit = 10 } = req.query;
 
-        if (!query) {
-            return res.status(400).json({ error: "Search query is required." });
+
+
+
+const getOrganizationAdmins = async (req, res) => {
+    try{
+        const {id} = req.params;
+        const organization = await Organization.findById(id);
+        if (!organization) {
+            return res.status(404).json({ error: "Organization not found." });
         }
 
-        const skip = (page - 1) * limit;
-
-        const organizations = await Organization.find({
-            $or: [
-                { organizationName: { $regex: query, $options: 'i' } },
-                { description: { $regex: query, $options: 'i' } }
-            ]
+        const admins = await User.find({ 
+            _id: { $in: organization.admins } 
         })
-        .populate('owner', 'firstName lastName profilePicture')
-        .select('organizationName description profilePicture statistics')
-        .skip(skip)
-        .limit(parseInt(limit))
-        .sort({ 'statistics.totalFollowers': -1 });
+        .select('firstName lastName profilePicture');
 
-        const total = await Organization.countDocuments({
-            $or: [
-                { organizationName: { $regex: query, $options: 'i' } },
-                { description: { $regex: query, $options: 'i' } }
-            ]
-        });
+        res.status(200).json({ admins, totalAdmins: organization.admins.length });
 
-        res.status(200).json({ 
-            organizations,
-            query,
-            pagination: {
-                current: parseInt(page),
-                total: Math.ceil(total / limit),
-                hasNext: skip + organizations.length < total,
-                hasPrev: page > 1
-            }
-        });
-
-    } catch (error) {
-        console.log("Error in searchOrganizations", error.message);
+    }catch (error) {
+        console.log("Error in getOrganizationAdmins", error.message);
         res.status(500).json({ error: "Internal Server Error." });
     }
+}
+
+const getOrganizationPosts = async (req, res) => {
+  try {
+    const { id } = req.params; // organization ID from URL
+    const page = parseInt(req.query.page) || 1; // current page number
+    const limit = parseInt(req.query.limit) || 10; // posts per page
+    const skip = (page - 1) * limit;
+
+    const organization = await Organization.findById(id)
+      .populate({
+        path: "posts",
+        populate: {
+          path: "author",
+          select: "firstName lastName profilePicture",
+        },
+        options: { skip, limit, sort: { createdAt: -1 } }, // pagination + newest first
+      })
+      .select("posts");
+
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found." });
+    }
+
+    const totalPosts = organization.statistics?.totalPosts || organization.posts.length;
+    const totalPages = Math.ceil(totalPosts / limit);
+
+    res.status(200).json({
+      posts: organization.posts,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalPosts,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getOrganizationPosts:", error.message);
+    res.status(500).json({ error: "Internal Server Error." });
+  }
 };
+
+const getOrganizationPendingPosts = async (req, res) => {
+  try {
+    const { id } = req.params; // organization ID from URL
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const organization = await Organization.findById(id)
+      .populate({
+        path: "pendingPosts",
+        populate: {
+          path: "author",
+          select: "firstName lastName profilePicture",
+        },
+        options: { skip, limit, sort: { createdAt: -1 } },
+      })
+      .select("pendingPosts");
+
+    if (!organization) {
+      return res.status(404).json({ error: "Organization not found." });
+    }
+
+    const totalPending = organization.pendingPosts.length;
+    const totalPages = Math.ceil(totalPending / limit);
+
+    res.status(200).json({
+      pendingPosts: organization.pendingPosts,
+      pagination: {
+        currentPage: page,
+        totalPages,
+        totalPending,
+        hasNextPage: page < totalPages,
+        hasPrevPage: page > 1,
+      },
+    });
+  } catch (error) {
+    console.error("Error in getOrganizationPendingPosts:", error.message);
+    res.status(500).json({ error: "Internal Server Error." });
+  }
+};
+
 
 // Get organization members (public)
 const getOrganizationMembers = async (req, res) => {
@@ -837,10 +905,7 @@ const getOrganizationMembers = async (req, res) => {
         .skip(skip)
         .limit(parseInt(limit));
 
-        const admins = await User.find({ 
-            _id: { $in: organization.admins } 
-        })
-        .select('firstName lastName profilePicture');
+        
 
         const owner = await User.findById(organization.owner)
             .select('firstName lastName profilePicture');
@@ -888,7 +953,8 @@ const getOrganizationFollowers = async (req, res) => {
         .select('firstName lastName profilePicture')
         .skip(skip)
         .limit(parseInt(limit));
-
+        
+        await syncOrganizationStats(organization._id);
         res.status(200).json({
             organizationName: organization.organizationName,
             followers,
@@ -1171,6 +1237,78 @@ const leaveOrganization = async (req, res) => {
     }
 };
 
+const searchOrganizations = async (req, res) => {
+    try {
+        const { query, page = 1, limit = 10 } = req.query;
+
+        if (!query) {
+            return res.status(400).json({ error: "Search query is required." });
+        }
+
+        const skip = (page - 1) * limit;
+
+        const organizations = await Organization.find({
+            $or: [
+                { organizationName: { $regex: query, $options: 'i' } },
+                { description: { $regex: query, $options: 'i' } }
+            ]
+        })
+        .populate('owner', 'firstName lastName profilePicture')
+        .select('organizationName description profilePicture statistics')
+        .skip(skip)
+        .limit(parseInt(limit))
+        .sort({ 'statistics.totalFollowers': -1 });
+
+        const total = await Organization.countDocuments({
+            $or: [
+                { organizationName: { $regex: query, $options: 'i' } },
+                { description: { $regex: query, $options: 'i' } }
+            ]
+        });
+
+        res.status(200).json({ 
+            organizations,
+            query,
+            pagination: {
+                current: parseInt(page),
+                total: Math.ceil(total / limit),
+                hasNext: skip + organizations.length < total,
+                hasPrev: page > 1
+            }
+        });
+
+    } catch (error) {
+        console.log("Error in searchOrganizations", error.message);
+        res.status(500).json({ error: "Internal Server Error." });
+    }
+};
+
+const syncOrganizationStats = async (organizationId) => {
+  try {
+    const organization = await Organization.findById(organizationId)
+      .select("members followers posts statistics");
+
+    if (!organization) return null;
+
+    const updatedStats = {
+      totalMembers: organization.members.length,
+      totalFollowers: organization.followers.length,
+      totalPosts: organization.posts.length,
+    };
+
+    // Update only if something changed
+    if (JSON.stringify(updatedStats) !== JSON.stringify(organization.statistics)) {
+      organization.statistics = updatedStats;
+      await organization.save();
+      console.log(`✅ Stats synced for organization ${organizationId}`);
+    }
+
+    return organization.statistics;
+  } catch (error) {
+    console.error("Error syncing organization stats:", error.message);
+  }
+};
+
 export {
     createOrganization,
     updateOrganization,
@@ -1185,15 +1323,23 @@ export {
     getOrganizationById,
     followUnfollowOrganization,
 
+    getOrganizationPosts,
+    getOrganizationPendingPosts,
     getOrganizationProfile,
     getAllOrganizationsPublic,
-    searchOrganizations,
+    getOrganizationAdmins,
     getOrganizationMembers,
     getOrganizationFollowers,
+
+
+    searchOrganizations,
+    
     getOrganizationStatistics,
     getMyFollowedOrganizations,
     getMyMemberOrganizations,
-    leaveOrganization
+    leaveOrganization,
+
+    syncOrganizationStats
 };
 
 

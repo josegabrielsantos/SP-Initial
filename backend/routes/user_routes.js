@@ -10,7 +10,8 @@ import {getMe,
         getMyMemberships,
         getMyPosts,
         getMyLikedPosts,
-        getMyFollowedOrganizations
+        getMyFollowedOrganizations,
+        getMyPendingPosts
 } from '../controllers/user_controller.js';
 
 const router = express.Router();
@@ -21,14 +22,12 @@ router.get("/my-memberships", protectRouteUser, getMyMemberships);
 router.get("/my-liked-posts", protectRouteUser, getMyLikedPosts);
 router.get("/my-followed-organizations", protectRouteUser, getMyFollowedOrganizations);
 router.post("/update", protectRouteUser, updateUserProfile);
-// router.get("/my-pending-posts", protectRouteUser, );
+router.get("/my-pending-posts", protectRouteUser, getMyPendingPosts);
 
 router.get("/:id/profile/", protectRouteUser, getUserProfile);
 router.get("/:id/followed-organizations", protectRouteUser, getUserFollowedOrganizations);
 router.get("/:id/memberships", protectRouteUser, getUserMemberships);
 router.get("/:id/liked-posts", protectRouteUser, getUserLikedPosts);
 router.get("/:id/posts", protectRouteUser, getUserPosts);
-
-
 
 export default router;

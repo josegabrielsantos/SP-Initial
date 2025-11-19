@@ -246,6 +246,41 @@ const getMyPosts = async (req, res) => {
     }
 }
 
+const getMyPendingPosts = async (req, res) => {
+    try {
+        const userId = req.user._id;
+        
+        const user = await User.findById(userId)
+            .populate({
+                path: 'applicationsForPosts',
+                populate: [
+                    {
+                        path: 'organization',
+                        select: 'name logo'
+                    }
+                ],
+                options: {
+                    sort: { createdAt: -1 },
+                    skip,
+                    limit,
+                }
+            })
+            .select('applicationsForPosts');
+        
+        if(!user) {
+            return res.status(404).json({error: "User not found."});
+        }
+        
+        res.status(200).json({
+            applicationsForPosts: user.applicationsForPosts,
+            count: user.applicationsForPosts.length
+        });
+    } catch (error) {
+        console.log("Error in getmyPendingPosts");
+        res.status(500).json({error: error.message});
+    }
+}
+
 const getUserFollowedOrganizations = async (req, res) => {
     try {
         const {id} = req.params;
@@ -399,6 +434,7 @@ export {
     getMyPosts,
     getMyLikedPosts,
     getMyFollowedOrganizations,
+    getMyPendingPosts,
 
     getUserProfile,
     updateUserProfile,
