@@ -265,7 +265,8 @@
 
 // export default Post;
 
-import mongoose from "mongoose";
+import mongoose, { Schema } from "mongoose";
+
 
 const pollOptionSchema = new mongoose.Schema({
   optionText: {
@@ -480,15 +481,15 @@ const postSchema = new mongoose.Schema({
   },
   
   // For question-type posts
-  isQuestion: {
-    type: Boolean,
-    default: false
-  },
+  // isQuestion: {
+  //   type: Boolean,
+  //   default: false
+  // },
   
-  acceptedAnswer: {
-    type: Schema.Types.ObjectId,
-    ref: 'Comment'
-  },
+  // acceptedAnswer: {
+  //   type: Schema.Types.ObjectId,
+  //   ref: 'Comment'
+  // },
   
   // Engagement metrics
   likes: [{
@@ -573,7 +574,28 @@ const postSchema = new mongoose.Schema({
       type: Date,
       default: Date.now
     }
-  }]
+  }],
+
+  status: {
+    type: String,
+    enum: ['pending', 'approved', 'rejected', 'archived', 'deleted', 'flagged', 'hidden'],
+    default: 'pending'
+  },
+  
+  // Approval tracking
+  approvalStatus: {
+    approvedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    approvedAt: Date,
+    rejectedBy: {
+      type: Schema.Types.ObjectId,
+      ref: 'User'
+    },
+    rejectedAt: Date,
+    rejectionReason: String
+  },
   
 }, {
   timestamps: true,
@@ -610,4 +632,4 @@ postSchema.pre('save', function(next) {
 
 const Post = mongoose.model('Post', postSchema);
 
-module.exports = Post;
+export default Post;

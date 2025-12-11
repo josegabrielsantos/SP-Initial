@@ -126,7 +126,6 @@ const deleteOrganization = async (req, res) => {
 };
 
 
-
 // organization routes ADD REMOVE ADMIN AND MEMBERS
 const addOrganizationAdmin = async (req, res) => {
     try {
@@ -590,7 +589,6 @@ const getOrganizationById = async (req, res) => {
     try {
         const { id } = req.params;
 
-
         const organization = await Organization.findById(id)
             .populate('owner', 'firstName lastName email profilePicture')
             .populate('admins', 'firstName lastName email profilePicture')
@@ -802,46 +800,46 @@ const getOrganizationAdmins = async (req, res) => {
     }
 }
 
-const getOrganizationPosts = async (req, res) => {
-  try {
-    const { id } = req.params; // organization ID from URL
-    const page = parseInt(req.query.page) || 1; // current page number
-    const limit = parseInt(req.query.limit) || 10; // posts per page
-    const skip = (page - 1) * limit;
+// const getOrganizationPosts = async (req, res) => {
+//   try {
+//     const { id } = req.params; // organization ID from URL
+//     const page = parseInt(req.query.page) || 1; // current page number
+//     const limit = parseInt(req.query.limit) || 10; // posts per page
+//     const skip = (page - 1) * limit;
 
-    const organization = await Organization.findById(id)
-      .populate({
-        path: "posts",
-        populate: {
-          path: "author",
-          select: "firstName lastName profilePicture",
-        },
-        options: { skip, limit, sort: { createdAt: -1 } }, // pagination + newest first
-      })
-      .select("posts");
+//     const organization = await Organization.findById(id)
+//       .populate({
+//         path: "posts",
+//         populate: {
+//           path: "author",
+//           select: "firstName lastName profilePicture",
+//         },
+//         options: { skip, limit, sort: { createdAt: -1 } }, // pagination + newest first
+//       })
+//       .select("posts");
 
-    if (!organization) {
-      return res.status(404).json({ error: "Organization not found." });
-    }
+//     if (!organization) {
+//       return res.status(404).json({ error: "Organization not found." });
+//     }
 
-    const totalPosts = organization.statistics?.totalPosts || organization.posts.length;
-    const totalPages = Math.ceil(totalPosts / limit);
+//     const totalPosts = organization.statistics?.totalPosts || organization.posts.length;
+//     const totalPages = Math.ceil(totalPosts / limit);
 
-    res.status(200).json({
-      posts: organization.posts,
-      pagination: {
-        currentPage: page,
-        totalPages,
-        totalPosts,
-        hasNextPage: page < totalPages,
-        hasPrevPage: page > 1,
-      },
-    });
-  } catch (error) {
-    console.error("Error in getOrganizationPosts:", error.message);
-    res.status(500).json({ error: "Internal Server Error." });
-  }
-};
+//     res.status(200).json({
+//       posts: organization.posts,
+//       pagination: {
+//         currentPage: page,
+//         totalPages,
+//         totalPosts,
+//         hasNextPage: page < totalPages,
+//         hasPrevPage: page > 1,
+//       },
+//     });
+//   } catch (error) {
+//     console.error("Error in getOrganizationPosts:", error.message);
+//     res.status(500).json({ error: "Internal Server Error." });
+//   }
+// };
 
 const getOrganizationPendingPosts = async (req, res) => {
   try {
