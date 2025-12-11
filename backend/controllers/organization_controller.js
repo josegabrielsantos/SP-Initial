@@ -1321,7 +1321,7 @@ export {
     getOrganizationById,
     followUnfollowOrganization,
 
-    getOrganizationPosts,
+    // getOrganizationPosts,
     getOrganizationPendingPosts,
     getOrganizationProfile,
     getAllOrganizationsPublic,
