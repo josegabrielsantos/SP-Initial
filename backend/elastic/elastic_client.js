@@ -24,13 +24,13 @@ const indexMappings = {
         mappings: {
             properties: {
                 title: { 
-                    type: 'text', 
+                    type: 'text',
                     analyzer: 'standard',
                     fields: {
                         keyword: { type: 'keyword' }
                     }
                 },
-                abstract: { 
+                abstract: {
                     type: 'text', 
                     analyzer: 'standard' 
                 },
